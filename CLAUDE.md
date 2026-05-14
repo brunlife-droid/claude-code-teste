@@ -6,7 +6,7 @@ Plataforma SaaS multi-tenant white-label de IA pedagógica para redes municipais
 
 **4 camadas de usuário**: Aluno (mobile/WhatsApp), Professor (web), Secretaria (web), Admin Nexus (interno).
 
-**Stack**: Next.js 16 (App Router) + React 19 + TypeScript + Tailwind v4. Backend via Server Actions e API Routes do Next. Postgres (Neon) + Drizzle + pgvector. AI SDK (Vercel) com Claude Haiku 4.5 como modelo primário.
+**Stack**: Next.js 16 (App Router) + React 19 + TypeScript + Tailwind v4. Backend via Server Actions e API Routes do Next. Postgres (Neon) + Drizzle + pgvector. AI SDK (Vercel) com **OpenRouter** como gateway unificado (Claude Haiku 4.5 primário; GPT, Gemini, Llama via mesma chave).
 
 **Multi-tenancy**: single Postgres com `tenant_id` + RLS. Tenant resolvido por subdomínio (`alfenas.nexus.edu`). White-label via CSS vars semânticas — cor, nome do tutor, voz mudam por tenant.
 
@@ -20,7 +20,7 @@ Plataforma SaaS multi-tenant white-label de IA pedagógica para redes municipais
 4. **LGPD com menor**: dados de aluno são PII de menor — exigem cuidado extra. Consentimento do responsável obrigatório.
 5. **Tom institucional, não infantil**: aluno de 12 anos não é criança de 6. Linguagem firme, respeitosa, brasileira.
 6. **WhatsApp é o canal principal do aluno**: ao desenhar UX/lógica, pensar primeiro em como funciona no Whats, web é fallback.
-7. **LLM gateway é obrigatório**: nunca chamar Anthropic/OpenAI direto de componente. Tudo via `src/lib/llm/`.
+7. **LLM gateway é obrigatório**: nunca chamar OpenRouter/OpenAI direto de componente. Tudo via `src/lib/llm/`.
 
 ## Convenções
 

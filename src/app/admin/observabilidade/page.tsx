@@ -11,17 +11,17 @@ const KPIS = [
 ];
 
 const MODELS = [
-  { n: "claude-haiku-4-5", p: "Anthropic", use: 72, p95: "0,9s", err: "0,02%", cost: "R$ 6,80", prim: true },
-  { n: "gemini-2.5-flash", p: "Google", use: 18, p95: "1,1s", err: "0,05%", cost: "R$ 4,20" },
-  { n: "gpt-4o-mini", p: "OpenAI", use: 8, p95: "1,4s", err: "0,03%", cost: "R$ 8,40" },
-  { n: "llama-3.3-70b · self-hosted", p: "AWS Bedrock", use: 2, p95: "2,1s", err: "0,09%", cost: "R$ 2,10", standby: true },
+  { n: "anthropic/claude-haiku-4-5", p: "OpenRouter", use: 72, p95: "1,0s", err: "0,02%", cost: "R$ 6,80", prim: true },
+  { n: "google/gemini-2.5-flash", p: "OpenRouter", use: 18, p95: "1,2s", err: "0,05%", cost: "R$ 4,20" },
+  { n: "openai/gpt-4o-mini", p: "OpenRouter", use: 8, p95: "1,5s", err: "0,03%", cost: "R$ 8,40" },
+  { n: "meta-llama/llama-3.3-70b", p: "OpenRouter", use: 2, p95: "2,2s", err: "0,09%", cost: "R$ 2,10", standby: true },
 ];
 
 const SWITCHES = [
-  { cap: "Chat (aluno)", cur: "claude-haiku-4-5", alt: "gemini-2.5-flash" },
-  { cap: "Geração de plano", cur: "claude-haiku-4-5", alt: "—" },
-  { cap: "Correção redação", cur: "gpt-4o-mini", alt: "claude-haiku-4-5" },
-  { cap: "Embeddings RAG", cur: "voyage-3", alt: "bge-m3 (self)" },
+  { cap: "Chat (aluno)", cur: "anthropic/claude-haiku-4-5", alt: "google/gemini-2.5-flash" },
+  { cap: "Geração de plano", cur: "anthropic/claude-haiku-4-5", alt: "—" },
+  { cap: "Correção redação", cur: "openai/gpt-4o-mini", alt: "anthropic/claude-haiku-4-5" },
+  { cap: "Embeddings RAG", cur: "openai/text-embedding-3-small", alt: "voyage-3" },
 ];
 
 export default function ObservabilidadePage() {

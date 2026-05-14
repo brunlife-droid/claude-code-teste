@@ -7,42 +7,45 @@ import type { CapabilityRoute } from "./types";
  * alterado pelo painel N7 sem deploy. Aqui é hard-coded para Fase 0.
  *
  * Estratégia:
- * - claude-haiku-4-5 como modelo primário (rápido, barato, multilíngue forte em PT-BR)
- * - gpt-4o-mini para correção de redação (melhor em norma culta)
- * - text-embedding-3-small para RAG (custo/qualidade razoável)
+ * - OpenRouter como provider único para chat/geração — acesso a Claude,
+ *   GPT, Gemini e Llama com a mesma API key (custo centralizado).
+ * - claude-haiku-4-5 como modelo primário (rápido, barato, forte em PT-BR).
+ * - gpt-4o-mini para correção de redação (norma culta).
+ * - Fallbacks cruzados para resiliência (se Anthropic cai, Gemini assume).
+ * - Embeddings continuam direto na OpenAI (OpenRouter não roda embeddings).
  */
 
 export const ROUTES: CapabilityRoute[] = [
   {
     capability: "chat_student",
-    provider: "anthropic",
-    model: "claude-haiku-4-5",
+    provider: "openrouter",
+    model: "anthropic/claude-haiku-4-5",
     promptVersion: "v4.2",
-    fallback: { provider: "google", model: "gemini-2.5-flash" },
+    fallback: { provider: "openrouter", model: "google/gemini-2.5-flash" },
   },
   {
     capability: "plan_generation",
-    provider: "anthropic",
-    model: "claude-haiku-4-5",
+    provider: "openrouter",
+    model: "anthropic/claude-haiku-4-5",
     promptVersion: "v1.0",
   },
   {
     capability: "essay_correction",
-    provider: "openai",
-    model: "gpt-4o-mini",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
     promptVersion: "v1.0",
-    fallback: { provider: "anthropic", model: "claude-haiku-4-5" },
+    fallback: { provider: "openrouter", model: "anthropic/claude-haiku-4-5" },
   },
   {
     capability: "bncc_classification",
-    provider: "anthropic",
-    model: "claude-haiku-4-5",
+    provider: "openrouter",
+    model: "anthropic/claude-haiku-4-5",
     promptVersion: "v1.0",
   },
   {
     capability: "sre_classification",
-    provider: "anthropic",
-    model: "claude-haiku-4-5",
+    provider: "openrouter",
+    model: "anthropic/claude-haiku-4-5",
     promptVersion: "v1.0",
   },
   {

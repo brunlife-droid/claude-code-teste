@@ -12,10 +12,10 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.77",
     "@ai-sdk/openai": "^3.0.63",
     "@auth/drizzle-adapter": "^1.11.2",
     "@neondatabase/serverless": "^1.1.0",
+    "@openrouter/ai-sdk-provider": "^2.9.0",
     "@vercel/blob": "^2.3.3",
     "ai": "^6.0.182",
     "class-variance-authority": "^0.7.1",

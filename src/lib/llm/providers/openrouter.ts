@@ -1,31 +1,53 @@
-import { anthropic } from "@ai-sdk/anthropic";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText, streamText } from "ai";
 import type {
   ChatCompletionRequest,
   ChatCompletionResponse,
+  ModelId,
   StreamChunk,
 } from "../types";
 
 /**
- * Provider Anthropic (Claude Haiku 4.5 primário).
- * Requer ANTHROPIC_API_KEY no ambiente.
+ * Provider OpenRouter — proxy unificado para Claude, GPT, Gemini, Llama, etc.
+ *
+ * Requer OPENROUTER_API_KEY no ambiente. Model IDs seguem o formato
+ * `<provedor>/<modelo>` (ex: "anthropic/claude-haiku-4-5").
+ *
+ * Vantagens vs. integração direta:
+ * - Uma chave para todos os modelos
+ * - Failover automático interno (configurável)
+ * - Custo unificado para análise
+ * - Alinha com a visão de "switch sem deploy" do N7
  */
 
-export async function anthropicComplete(
+function client() {
+  if (!process.env.OPENROUTER_API_KEY) {
+    throw new Error(
+      "OPENROUTER_API_KEY não configurada — fallback para mock provider",
+    );
+  }
+  return createOpenRouter({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    // Headers opcionais que OpenRouter usa para attribution/leaderboard:
+    extraBody: {},
+    headers: {
+      "HTTP-Referer": process.env.OPENROUTER_SITE_URL ?? "https://nexus-education",
+      "X-Title": "Nexus Education",
+    },
+  });
+}
+
+export async function openrouterComplete(
   req: ChatCompletionRequest,
   modelId: string,
 ): Promise<ChatCompletionResponse> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error(
-      "ANTHROPIC_API_KEY não configurada — caia no fallback ou no mock provider",
-    );
-  }
   const start = Date.now();
+  const openrouter = client();
   const system = req.messages.find((m) => m.role === "system")?.content;
   const conv = req.messages.filter((m) => m.role !== "system");
 
   const result = await generateText({
-    model: anthropic(modelId),
+    model: openrouter(modelId),
     system,
     messages: conv.map((m) => ({
       role: m.role as "user" | "assistant",
@@ -37,27 +59,25 @@ export async function anthropicComplete(
 
   return {
     text: result.text,
-    model: modelId as ChatCompletionResponse["model"],
-    provider: "anthropic",
+    model: modelId as ModelId,
+    provider: "openrouter",
     inputTokens: result.usage?.inputTokens ?? 0,
     outputTokens: result.usage?.outputTokens ?? 0,
     latencyMs: Date.now() - start,
   };
 }
 
-export async function* anthropicStream(
+export async function* openrouterStream(
   req: ChatCompletionRequest,
   modelId: string,
 ): AsyncGenerator<StreamChunk> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY não configurada");
-  }
   const start = Date.now();
+  const openrouter = client();
   const system = req.messages.find((m) => m.role === "system")?.content;
   const conv = req.messages.filter((m) => m.role !== "system");
 
   const stream = streamText({
-    model: anthropic(modelId),
+    model: openrouter(modelId),
     system,
     messages: conv.map((m) => ({
       role: m.role as "user" | "assistant",
@@ -75,8 +95,8 @@ export async function* anthropicStream(
   yield {
     type: "done",
     meta: {
-      model: modelId as ChatCompletionResponse["model"],
-      provider: "anthropic",
+      model: modelId as ModelId,
+      provider: "openrouter",
       inputTokens: usage?.inputTokens ?? 0,
       outputTokens: usage?.outputTokens ?? 0,
       latencyMs: Date.now() - start,

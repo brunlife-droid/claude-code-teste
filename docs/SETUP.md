@@ -12,12 +12,15 @@ Crie `.env.local` na raiz (não vai pro Git):
 DATABASE_URL="postgresql://user:pass@ep-xxx.neon.tech/nexus?sslmode=require"
 
 # ─── LLM (Bloco H) ─────────────────────────────────────────────
-# Anthropic Claude Haiku 4.5 (modelo primário)
-ANTHROPIC_API_KEY="sk-ant-..."
+# OpenRouter — gateway unificado para Claude, GPT, Gemini, Llama.
+# Uma única chave dá acesso a TODOS os modelos roteados (chat, plano,
+# correção, BNCC, SRE). Switch entre modelos = mudar string em routes.ts.
+OPENROUTER_API_KEY="sk-or-v1-..."
+# Opcional: enviado como HTTP-Referer (aparece nas analytics do OpenRouter)
+OPENROUTER_SITE_URL="https://claude-code-teste.vercel.app"
 
-# Opcionais (fallback / capability routing)
+# Opcional (apenas embeddings — OpenRouter não roda embeddings)
 OPENAI_API_KEY="sk-..."
-GOOGLE_GENERATIVE_AI_API_KEY="..."
 
 # ─── Auth (Bloco I) ────────────────────────────────────────────
 NEXTAUTH_SECRET="gere com: openssl rand -base64 32"
@@ -62,7 +65,7 @@ A partir daí, mudanças em `src/lib/db/schema.ts` são aplicadas com `npm run d
 | Variável | Quando é necessária |
 |---|---|
 | `DATABASE_URL` | A partir do Bloco G — quando começamos a salvar conversas, alunos, etc. de verdade |
-| `ANTHROPIC_API_KEY` | A partir do Bloco H — sem isso, o chat usa um mock provider que devolve respostas plausíveis |
+| `OPENROUTER_API_KEY` | A partir do Bloco H — sem isso, o chat usa um mock provider que devolve respostas plausíveis. Obtenha em https://openrouter.ai/keys |
 | `NEXTAUTH_SECRET` | A partir do Bloco I — sem isso, auth está em "modo dev" e qualquer usuário entra como demo |
 | `BLOB_READ_WRITE_TOKEN` | A partir do Bloco J — sem isso, uploads de foto viram data URLs inline (funciona, mas não persiste entre sessões) |
 

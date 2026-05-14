@@ -4,6 +4,10 @@
  * Toda chamada de IA passa por uma capability (não direto no provider).
  * Capabilities mapeiam para modelos via tabela de roteamento, permitindo
  * switch sem deploy (configurado em N7 · Observabilidade).
+ *
+ * Provider primário é OpenRouter, que dá acesso unificado a Claude, GPT,
+ * Gemini, Llama etc. com uma única chave. ModelId segue a convenção
+ * `<provider>/<model>` do OpenRouter.
  */
 
 export type Capability =
@@ -14,16 +18,20 @@ export type Capability =
   | "embeddings_rag"
   | "sre_classification";
 
-export type ProviderId = "anthropic" | "openai" | "google" | "mock";
+export type ProviderId = "openrouter" | "openai" | "mock";
 
+/**
+ * IDs aceitos pelo OpenRouter (https://openrouter.ai/models).
+ * Embeddings continuam direto na OpenAI (OpenRouter não roda embeddings).
+ */
 export type ModelId =
-  | "claude-haiku-4-5"
-  | "claude-sonnet-4-6"
-  | "claude-opus-4-7"
-  | "gpt-4o-mini"
-  | "gpt-4o"
-  | "gemini-2.5-flash"
-  | "voyage-3"
+  | "anthropic/claude-haiku-4-5"
+  | "anthropic/claude-sonnet-4-6"
+  | "anthropic/claude-opus-4-7"
+  | "openai/gpt-4o-mini"
+  | "openai/gpt-4o"
+  | "google/gemini-2.5-flash"
+  | "meta-llama/llama-3.3-70b-instruct"
   | "text-embedding-3-small"
   | "mock";
 
@@ -48,7 +56,7 @@ export interface ChatCompletionRequest {
   studentId?: string;
   temperature?: number;
   maxTokens?: number;
-  systemContext?: Record<string, string>; // {{tutor_name}}, {{prefeitura}}, etc.
+  systemContext?: Record<string, string>;
 }
 
 export interface ChatCompletionResponse {

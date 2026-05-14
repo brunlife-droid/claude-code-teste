@@ -1,7 +1,7 @@
 /**
  * Gateway central de LLM.
  *
- * Toda chamada de IA passa por aqui — NUNCA chame `anthropic()` ou
+ * Toda chamada de IA passa por aqui — NUNCA chame `openrouter()` ou
  * `openai()` direto de componentes/server actions.
  *
  * Responsabilidades:
@@ -20,11 +20,11 @@ import type {
 import { routeFor } from "./routes";
 import { STUDENT_TUTOR_PROMPT, renderPrompt } from "./prompts/student-tutor";
 import { mockComplete, mockStream } from "./providers/mock";
-import { anthropicComplete, anthropicStream } from "./providers/anthropic";
+import { openrouterComplete, openrouterStream } from "./providers/openrouter";
 
 function shouldUseMock(provider: string): boolean {
   if (provider === "mock") return true;
-  if (provider === "anthropic" && !process.env.ANTHROPIC_API_KEY) return true;
+  if (provider === "openrouter" && !process.env.OPENROUTER_API_KEY) return true;
   if (provider === "openai" && !process.env.OPENAI_API_KEY) return true;
   return false;
 }
@@ -58,16 +58,17 @@ export async function complete(
     return mockComplete(enriched);
   }
 
-  if (route.provider === "anthropic") {
+  if (route.provider === "openrouter") {
     try {
-      return await anthropicComplete(enriched, route.model);
+      return await openrouterComplete(enriched, route.model);
     } catch (err) {
-      console.error("anthropic failed, falling back to mock", err);
+      console.error("openrouter failed, falling back to mock", err);
       return mockComplete(enriched);
     }
   }
 
-  // outros providers (openai, google) ainda não implementados — caem no mock
+  // Outros providers (ex: openai direto para embeddings) podem ser
+  // implementados aqui no futuro. Por ora, caem no mock.
   return mockComplete(enriched);
 }
 
@@ -82,12 +83,12 @@ export async function* stream(
     return;
   }
 
-  if (route.provider === "anthropic") {
+  if (route.provider === "openrouter") {
     try {
-      yield* anthropicStream(enriched, route.model);
+      yield* openrouterStream(enriched, route.model);
       return;
     } catch (err) {
-      console.error("anthropic stream failed, falling back to mock", err);
+      console.error("openrouter stream failed, falling back to mock", err);
       yield* mockStream(enriched);
       return;
     }
