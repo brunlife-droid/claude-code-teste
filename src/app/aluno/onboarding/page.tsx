@@ -1,214 +1,166 @@
-import { ArrowRight, Check, Pencil } from "lucide-react";
-import { Button } from "@/components/ui";
-import { PhoneFrame, PhoneStage, StatusBar } from "@/components/phone";
+import Link from "next/link";
+import { ArrowRight, Check, Pencil, Shield, Sparkles } from "lucide-react";
+import { Button, Card } from "@/components/ui";
 import { getCurrentTenant } from "@/lib/tenants/server";
+
+const TERMS = [
+  {
+    icon: Shield,
+    title: "Suas conversas são privadas",
+    desc: "Só você, a escola e seus responsáveis veem o conteúdo. Nada vai para a internet.",
+  },
+  {
+    icon: Sparkles,
+    title: "Eu vou guardar o que ajuda você aprender",
+    desc: "Tipo: quando frações ficam difíceis, ou quando você manda bem em redação. Pra te ajudar melhor.",
+  },
+  {
+    icon: Shield,
+    title: "Se você me contar algo grave, eu aviso quem cuida de você",
+    desc: "Bullying, violência ou tristeza muito grande não devem ficar só com a gente. Não fico sozinha com isso.",
+  },
+];
+
+const DADOS = [
+  { lbl: "Nome", val: "João Pedro Silva" },
+  { lbl: "Escola", val: "EM Dr. Sebastião Gualberto" },
+  { lbl: "Turma", val: "7º ano A" },
+  { lbl: "Como você gosta de ser chamado?", val: "João", edit: true },
+];
 
 export default async function OnboardingPage() {
   const tenant = await getCurrentTenant();
 
   return (
-    <PhoneStage
-      label={`A1 · Onboarding · ${tenant.short}`}
-      description="Boas-vindas com a persona do tutor, dados pré-preenchidos da escola, tour rápido e termo adaptado à linguagem do aluno."
-    >
-      {/* 1 · Boas-vindas */}
-      <PhoneFrame label="1 · Boas-vindas">
-        <StatusBar />
-        <div className="flex flex-1 flex-col gap-4 px-6 pt-2 pb-6">
-          <div className="text-text-faint mt-3 text-[11.5px] tracking-widest uppercase">
-            {tenant.short} · Educação
-          </div>
+    <div className="scroll-thin h-full overflow-y-auto">
+      <div className="mx-auto max-w-2xl px-8 py-12">
+        {/* Hero · Boas-vindas */}
+        <section className="flex flex-col items-center text-center">
           <div
-            className="mx-auto mt-2 flex h-36 w-36 items-center justify-center rounded-full shadow-[var(--shadow-lg)]"
+            className="flex size-24 items-center justify-center rounded-full shadow-[var(--shadow-lg)]"
             style={{
               background: `linear-gradient(135deg, ${tenant.primary} 0%, ${tenant.primary} 60%, ${tenant.secondary} 100%)`,
               color: tenant.primaryFg,
               fontFamily: "var(--font-serif)",
-              fontSize: 56,
+              fontSize: 44,
               fontWeight: 600,
             }}
           >
             {tenant.tutorName[0]}
           </div>
-          <div className="mt-2 text-center">
-            <div className="text-[22px] font-semibold tracking-tight">
-              Oi, eu sou a {tenant.tutorName}
-            </div>
-            <div className="text-text-muted mt-1.5 text-sm leading-relaxed">
-              Sou sua tutora da rede municipal. Vou estudar com você, tirar
-              suas dúvidas e lembrar do seu jeito de aprender.
-            </div>
-          </div>
-          <div className="flex-1" />
-          <Button size="lg" className="w-full justify-center" iconRight={<ArrowRight size={16} />}>
-            Começar
-          </Button>
-          <Button
-            variant="ghost"
-            className="text-text-faint w-full justify-center text-xs"
-          >
-            Já tenho conta — entrar
-          </Button>
-        </div>
-      </PhoneFrame>
+          <h1 className="mt-6 text-3xl font-semibold tracking-tight">
+            Oi, eu sou a {tenant.tutorName}.
+          </h1>
+          <p className="text-text-muted mt-3 max-w-md text-[15px] leading-relaxed">
+            Sou sua tutora da rede municipal de {tenant.short}. Vou estudar com
+            você, tirar suas dúvidas e lembrar do seu jeito de aprender.
+          </p>
+        </section>
 
-      {/* 2 · Seus dados */}
-      <PhoneFrame label="2 · Seus dados">
-        <StatusBar />
-        <div className="flex flex-1 flex-col gap-4 px-5 pt-2 pb-5">
-          <div className="mt-2 flex gap-1">
-            <div className="bg-primary h-1 flex-1 rounded-sm" />
-            <div className="bg-primary h-1 flex-1 rounded-sm" />
-            <div className="bg-border h-1 flex-1 rounded-sm" />
-            <div className="bg-border h-1 flex-1 rounded-sm" />
+        {/* Confirmar dados */}
+        <section className="mt-12">
+          <div className="text-text-faint text-[11.5px] font-semibold tracking-widest uppercase">
+            Passo 1 de 2
           </div>
-          <div>
-            <div className="text-xl font-semibold tracking-tight">
-              Confirma se é você?
-            </div>
-            <div className="text-text-muted mt-1 text-[13px]">
-              A escola já me passou seus dados. Confere?
-            </div>
-          </div>
-          {[
-            { lbl: "Nome", val: "João Pedro Silva" },
-            { lbl: "Escola", val: "EM Dr. Sebastião Gualberto" },
-            { lbl: "Turma", val: "7º ano A" },
-            { lbl: "Como você gosta de ser chamado?", val: "João", edit: true },
-          ].map((f) => (
-            <div key={f.lbl}>
-              <div className="text-text-faint mb-1 text-[11.5px] tracking-wider uppercase">
-                {f.lbl}
-              </div>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight">
+            Confirma se é você?
+          </h2>
+          <p className="text-text-muted mt-1 text-sm">
+            A escola já me passou seus dados. Confere e me diz como prefere ser
+            chamado.
+          </p>
+
+          <Card className="mt-5 p-2">
+            {DADOS.map((d, i) => (
               <div
-                className={`flex items-center justify-between rounded-[10px] border px-3 py-2.5 text-[15px] ${
-                  f.edit
-                    ? "border-primary bg-surface"
-                    : "bg-surface-2 border-border"
+                key={d.lbl}
+                className={`flex items-center justify-between gap-4 px-4 py-3.5 ${
+                  i < DADOS.length - 1 ? "border-border border-b" : ""
                 }`}
               >
-                {f.val}
-                {f.edit && <Pencil size={14} />}
-              </div>
-            </div>
-          ))}
-          <div className="flex-1" />
-          <Button size="lg" className="w-full justify-center" iconRight={<ArrowRight size={16} />}>
-            Tudo certo — continuar
-          </Button>
-        </div>
-      </PhoneFrame>
-
-      {/* 3 · Tour */}
-      <PhoneFrame label="3 · O que posso pedir">
-        <StatusBar />
-        <div className="flex flex-1 flex-col gap-3.5 px-5 pt-2 pb-5">
-          <div className="text-text-muted flex justify-end text-xs">
-            <span>Pular</span>
-          </div>
-          <div
-            className="flex flex-col gap-3 rounded-2xl p-4.5"
-            style={{ background: tenant.primarySoft }}
-          >
-            <div
-              className="text-base font-semibold tracking-tight"
-              style={{ color: tenant.primary }}
-            >
-              Eu sou só pra estudo.
-            </div>
-            <div className="text-text-muted text-sm leading-relaxed">
-              Pode me mandar foto da questão, áudio, texto. Eu te ajudo a
-              entender — não dou só a resposta pronta.
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              "Fazer o dever",
-              "Tirar dúvida",
-              "Estudar pra prova",
-              "Foto de exercício",
-            ].map((c) => (
-              <div
-                key={c}
-                className="bg-surface-2 text-text flex flex-col gap-1.5 rounded-xl p-3 text-[13px]"
-              >
-                <div className="bg-primary-soft text-primary inline-flex w-fit rounded-md p-1.5">
-                  <Check size={12} />
+                <div className="min-w-0">
+                  <div className="text-text-faint text-[11px] tracking-wider uppercase">
+                    {d.lbl}
+                  </div>
+                  <div className="mt-0.5 text-[15px]">{d.val}</div>
                 </div>
-                {c}
+                {d.edit && (
+                  <button className="text-text-muted hover:bg-surface-2 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors">
+                    <Pencil size={12} />
+                    Editar
+                  </button>
+                )}
               </div>
             ))}
-          </div>
-          <div className="flex-1" />
-          <div className="mb-1.5 flex justify-center gap-1">
-            <div
-              className="h-1.5 rounded-sm"
-              style={{ background: tenant.primary, width: 18 }}
-            />
-            <div className="bg-border-strong h-1.5 w-1.5 rounded-sm" />
-            <div className="bg-border-strong h-1.5 w-1.5 rounded-sm" />
-          </div>
-          <Button size="lg" className="w-full justify-center">
-            Próximo
-          </Button>
-        </div>
-      </PhoneFrame>
+          </Card>
+        </section>
 
-      {/* 4 · Termo */}
-      <PhoneFrame label="4 · Termo (adaptado)">
-        <StatusBar />
-        <div className="flex flex-1 flex-col gap-3 px-5 pt-2 pb-5">
-          <div className="text-xl font-semibold tracking-tight">
+        {/* Termo adaptado */}
+        <section className="mt-12">
+          <div className="text-text-faint text-[11.5px] font-semibold tracking-widest uppercase">
+            Passo 2 de 2
+          </div>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight">
             Combinado entre a gente
+          </h2>
+          <p className="text-text-muted mt-1 text-sm">
+            Leia bem rapidinho — é importante que você entenda como eu funciono.
+          </p>
+
+          <div className="mt-5 flex flex-col gap-3">
+            {TERMS.map((t) => {
+              const Icon = t.icon;
+              return (
+                <Card key={t.title} className="flex gap-4 p-5">
+                  <div
+                    className="flex size-10 shrink-0 items-center justify-center rounded-lg"
+                    style={{
+                      background: tenant.primarySoft,
+                      color: tenant.primary,
+                    }}
+                  >
+                    <Icon size={18} />
+                  </div>
+                  <div>
+                    <div className="text-[14.5px] font-semibold">{t.title}</div>
+                    <p className="text-text-muted mt-1 text-sm leading-relaxed">
+                      {t.desc}
+                    </p>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
-          <div className="text-text-muted text-[13px]">
-            Antes de começar, leia bem rapidinho. Vou ler em voz alta se
-            preferir.
-          </div>
-          {[
-            {
-              ico: "🤝",
-              t: "Suas conversas são privadas.",
-              s: "Só você, a escola e seus responsáveis veem. Ninguém da internet.",
-            },
-            {
-              ico: "🧠",
-              t: "Eu vou guardar o que ajuda você aprender.",
-              s: "Tipo: quando frações ficam difíceis, ou quando você manda bem em redação.",
-            },
-            {
-              ico: "🚨",
-              t: "Se você me contar algo grave, eu aviso quem cuida de você.",
-              s: "Bullying, violência ou tristeza muito grande. Não fico sozinha com isso.",
-            },
-          ].map((r, i) => (
-            <div
-              key={i}
-              className={`flex gap-3 py-3 ${i ? "border-border border-t" : ""}`}
-            >
-              <div className="text-2xl">{r.ico}</div>
-              <div>
-                <div className="text-sm font-medium">{r.t}</div>
-                <div className="text-text-muted mt-0.5 text-[12.5px] leading-relaxed">
-                  {r.s}
-                </div>
-              </div>
-            </div>
-          ))}
-          <label className="text-text-muted mt-1 flex items-start gap-2.5 text-[13px]">
+
+          <label className="text-text-muted mt-5 flex cursor-pointer items-start gap-3 text-sm">
             <span
-              className="bg-primary border-primary mt-px flex size-[18px] items-center justify-center rounded-sm border-2 text-white"
+              className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border-2 text-white"
+              style={{
+                background: tenant.primary,
+                borderColor: tenant.primary,
+              }}
             >
               <Check size={12} />
             </span>
-            <span>Li, entendi e estou de acordo. Meu responsável também sabe.</span>
+            <span>
+              Li, entendi e estou de acordo. Meu responsável também sabe que eu
+              vou usar a {tenant.tutorName}.
+            </span>
           </label>
-          <div className="flex-1" />
-          <Button size="lg" className="w-full justify-center">
-            Bora estudar
-          </Button>
-        </div>
-      </PhoneFrame>
-    </PhoneStage>
+        </section>
+
+        {/* CTA */}
+        <section className="mt-12 flex flex-col items-center gap-3">
+          <Link href="/aluno/chat">
+            <Button size="lg" iconRight={<ArrowRight size={16} />}>
+              Bora estudar
+            </Button>
+          </Link>
+          <span className="text-text-faint text-xs">
+            Você pode revisar essas configurações a qualquer momento.
+          </span>
+        </section>
+      </div>
+    </div>
   );
 }

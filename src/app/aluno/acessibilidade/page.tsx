@@ -1,5 +1,5 @@
 import { ArrowUp, Info, Mic, Moon, X } from "lucide-react";
-import { PhoneFrame, PhoneStage, StatusBar } from "@/components/phone";
+import { Card } from "@/components/ui";
 import { getCurrentTenant } from "@/lib/tenants/server";
 
 const MODES = [
@@ -35,94 +35,103 @@ const SETTINGS = [
 
 export default async function AcessibilidadePage() {
   const tenant = await getCurrentTenant();
-  return (
-    <PhoneStage
-      label={`A6 · Acessibilidade · ${tenant.short}`}
-      description="Configurações pessoais do aluno. Persistem entre sessões e dispositivos."
-    >
-      <PhoneFrame label="Settings de acessibilidade">
-        <StatusBar />
-        <div className="scroll-thin flex-1 overflow-y-auto px-5 pt-1 pb-6">
-          <div className="mt-1 text-[22px] font-semibold tracking-tight">
-            Acessibilidade
-          </div>
-          <div className="text-text-muted mt-1 text-[13px]">
-            Você pode mudar a qualquer hora. Eu lembro do seu jeito.
-          </div>
 
-          <div className="mt-4 flex flex-col gap-2.5">
+  return (
+    <div className="scroll-thin h-full overflow-y-auto">
+      <div className="mx-auto max-w-3xl px-8 py-10">
+        <header>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Acessibilidade
+          </h1>
+          <p className="text-text-muted mt-2 max-w-xl text-[15px] leading-relaxed">
+            Configure seu jeito de aprender. A {tenant.tutorName} lembra das
+            suas escolhas — no celular, no computador da escola, no WhatsApp.
+          </p>
+        </header>
+
+        {/* Modos de leitura */}
+        <section className="mt-10">
+          <div className="text-text-faint text-[11.5px] font-semibold tracking-widest uppercase">
+            Modos de leitura
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
             {MODES.map((m) => (
-              <div
+              <button
                 key={m.id}
-                className="bg-surface flex gap-3 rounded-2xl border p-3.5"
+                type="button"
+                className="bg-surface rounded-xl border p-5 text-left transition-all hover:shadow-[var(--shadow-sm)]"
                 style={{
                   borderColor: m.active ? tenant.primary : "var(--border)",
-                  boxShadow: m.active
-                    ? `0 0 0 3px ${tenant.primarySoft}`
-                    : undefined,
+                  boxShadow: m.active ? `0 0 0 3px ${tenant.primarySoft}` : undefined,
                 }}
               >
-                <div className="text-[26px] shrink-0">{m.icon}</div>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div className="text-[14.5px] font-medium">{m.title}</div>
+                <div className="flex items-start justify-between">
+                  <div className="text-3xl">{m.icon}</div>
+                  <div
+                    className="relative h-[22px] w-9 shrink-0 rounded-full transition-colors"
+                    style={{
+                      background: m.active
+                        ? tenant.primary
+                        : "var(--border-strong)",
+                    }}
+                  >
                     <div
-                      className="relative h-[22px] w-9 shrink-0 rounded-full"
-                      style={{
-                        background: m.active
-                          ? tenant.primary
-                          : "var(--border-strong)",
-                      }}
-                    >
-                      <div
-                        className="absolute top-0.5 size-[18px] rounded-full bg-white"
-                        style={{ left: m.active ? 16 : 2 }}
-                      />
-                    </div>
-                  </div>
-                  <div className="text-text-muted mt-1 text-[12.5px] leading-relaxed">
-                    {m.desc}
+                      className="absolute top-0.5 size-[18px] rounded-full bg-white transition-all"
+                      style={{ left: m.active ? 16 : 2 }}
+                    />
                   </div>
                 </div>
-              </div>
+                <div className="mt-4 text-[14.5px] font-semibold">
+                  {m.title}
+                </div>
+                <p className="text-text-muted mt-1.5 text-[13px] leading-relaxed">
+                  {m.desc}
+                </p>
+              </button>
             ))}
           </div>
+        </section>
 
-          <div className="mt-5">
-            <div className="text-text-faint text-[11.5px] tracking-wider uppercase">
-              Aparência
-            </div>
-            <div className="mt-2 flex flex-col gap-2">
-              {SETTINGS.map((s) => {
-                const Icon = s.Icon;
-                return (
-                  <div
-                    key={s.label}
-                    className="bg-surface border-border flex items-center justify-between rounded-[10px] border px-3.5 py-3"
-                  >
-                    <span className="text-[13.5px]">{s.label}</span>
-                    <span className="text-text-muted flex items-center gap-1.5 text-[12.5px]">
-                      <Icon size={14} />
-                      {s.value}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Aparência */}
+        <section className="mt-10">
+          <div className="text-text-faint text-[11.5px] font-semibold tracking-widest uppercase">
+            Aparência
           </div>
+          <Card className="mt-3 p-2">
+            {SETTINGS.map((s, i) => {
+              const Icon = s.Icon;
+              return (
+                <button
+                  key={s.label}
+                  type="button"
+                  className={`hover:bg-surface-2 flex w-full items-center justify-between rounded-md px-3 py-3.5 text-left ${
+                    i < SETTINGS.length - 1 ? "border-border border-b" : ""
+                  }`}
+                >
+                  <span className="text-[14.5px]">{s.label}</span>
+                  <span className="text-text-muted inline-flex items-center gap-2 text-[13px]">
+                    <Icon size={14} />
+                    {s.value}
+                  </span>
+                </button>
+              );
+            })}
+          </Card>
+        </section>
 
-          <div
-            className="mt-4 flex items-start gap-2.5 rounded-xl p-3 text-xs"
-            style={{ background: tenant.primarySoft, color: tenant.primary }}
-          >
-            <Info size={14} className="mt-0.5 shrink-0" />
-            <div>
-              Suas escolhas viajam com você — no celular, no computador da
-              escola, no WhatsApp.
-            </div>
+        {/* Info LGPD */}
+        <Card
+          className="mt-8 flex items-start gap-3 p-5"
+          style={{ background: tenant.primarySoft, borderColor: tenant.primaryBorder }}
+        >
+          <Info size={16} style={{ color: tenant.primary }} className="mt-0.5 shrink-0" />
+          <div className="text-sm leading-relaxed" style={{ color: tenant.primary }}>
+            Suas escolhas são pessoais e ficam guardadas com segurança. Seus
+            responsáveis podem ver e ajustar a qualquer momento, em
+            conformidade com a LGPD.
           </div>
-        </div>
-      </PhoneFrame>
-    </PhoneStage>
+        </Card>
+      </div>
+    </div>
   );
 }

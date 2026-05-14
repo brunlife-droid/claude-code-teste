@@ -1,6 +1,6 @@
-import { Search } from "lucide-react";
+import Link from "next/link";
+import { MessageSquare, Search } from "lucide-react";
 import { Chip } from "@/components/ui";
-import { PhoneFrame, PhoneStage, StatusBar } from "@/components/phone";
 import { getCurrentTenant } from "@/lib/tenants/server";
 
 const GROUPS = [
@@ -32,77 +32,89 @@ const FILTERS = ["Tudo", "Matemática", "Português", "Ciências", "História", 
 export default async function HistoricoPage() {
   const tenant = await getCurrentTenant();
   return (
-    <PhoneStage
-      label={`A3 · Histórico de conversas · ${tenant.short}`}
-      description="Agrupado por dia + filtro por disciplina. Busca semântica em todo histórico."
-    >
-      <PhoneFrame label="Lista com filtros">
-        <StatusBar />
-        <div className="px-5 pt-1 pb-3">
-          <div className="text-[22px] font-semibold tracking-tight">Conversas</div>
-          <div className="relative mt-3">
-            <Search
-              size={14}
-              className="text-text-faint absolute top-1/2 left-3 -translate-y-1/2"
-            />
-            <input
-              placeholder="Buscar tema, palavra…"
-              className="bg-surface border-border-strong placeholder:text-text-faint h-[38px] w-full rounded-xl border pr-3 pl-9 text-sm outline-none"
-            />
-          </div>
-          <div className="no-scrollbar mt-2.5 flex gap-1.5 overflow-x-auto">
-            {FILTERS.map((f, i) => (
-              <Chip
-                key={f}
-                className={
-                  i === 0
-                    ? "border-transparent whitespace-nowrap text-xs"
-                    : "bg-surface text-text-muted whitespace-nowrap text-xs"
-                }
-                style={
-                  i === 0
-                    ? { background: tenant.primarySoft, color: tenant.primary }
-                    : undefined
-                }
-              >
-                {f}
-              </Chip>
-            ))}
-          </div>
+    <div className="scroll-thin h-full overflow-y-auto">
+      <div className="mx-auto max-w-4xl px-8 py-10">
+        <header>
+          <h1 className="text-3xl font-semibold tracking-tight">Materiais</h1>
+          <p className="text-text-muted mt-2 text-[15px]">
+            Todas as conversas que você teve com a {tenant.tutorName}. Busque
+            por tema ou navegue por disciplina.
+          </p>
+        </header>
+
+        {/* Busca */}
+        <div className="relative mt-6">
+          <Search
+            size={16}
+            className="text-text-faint absolute top-1/2 left-4 -translate-y-1/2"
+          />
+          <input
+            className="bg-surface border-border-strong placeholder:text-text-faint focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-soft)] h-12 w-full rounded-xl border pr-4 pl-11 text-[15px] outline-none transition-all"
+            placeholder="Buscar tema, palavra-chave…"
+          />
         </div>
-        <div className="scroll-thin flex-1 overflow-y-auto">
-          {GROUPS.map((g) => (
-            <div key={g.title}>
-              <div className="text-text-faint px-5 pt-2 pb-1 text-[11.5px] font-semibold tracking-widest uppercase">
-                {g.title}
-              </div>
-              {g.items.map((it, i) => (
-                <div
-                  key={i}
-                  className="border-border flex gap-3 border-b px-5 py-3"
-                >
-                  <div
-                    className="mt-1.5 size-2 shrink-0 rounded-full"
-                    style={{ background: tenant.primary }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-text-muted text-[11px]">{it.area}</span>
-                      <span className="text-text-faint text-[11px]">
-                        {it.hora}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 truncate text-sm">{it.tema}</div>
-                    <div className="text-text-faint mt-0.5 text-[11.5px]">
-                      {it.msgs} mensagens
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+
+        {/* Filtros */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {FILTERS.map((f, i) => (
+            <Chip
+              key={f}
+              className="cursor-pointer"
+              style={
+                i === 0
+                  ? {
+                      background: tenant.primarySoft,
+                      color: tenant.primary,
+                      borderColor: "transparent",
+                    }
+                  : undefined
+              }
+            >
+              {f}
+            </Chip>
           ))}
         </div>
-      </PhoneFrame>
-    </PhoneStage>
+
+        {/* Lista */}
+        <div className="mt-8 flex flex-col gap-8">
+          {GROUPS.map((g) => (
+            <section key={g.title}>
+              <div className="text-text-faint text-[11.5px] font-semibold tracking-widest uppercase">
+                {g.title}
+              </div>
+              <div className="mt-3 flex flex-col">
+                {g.items.map((it, i) => (
+                  <Link
+                    key={i}
+                    href="/aluno/chat"
+                    className="hover:bg-surface-2 border-border group flex items-start gap-4 border-b py-4 transition-colors"
+                  >
+                    <div
+                      className="flex size-10 shrink-0 items-center justify-center rounded-lg"
+                      style={{
+                        background: tenant.primarySoft,
+                        color: tenant.primary,
+                      }}
+                    >
+                      <MessageSquare size={16} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-text-muted text-xs">{it.area}</span>
+                        <span className="text-text-faint text-xs">{it.hora}</span>
+                      </div>
+                      <div className="text-text mt-1 text-[15px]">{it.tema}</div>
+                      <div className="text-text-faint mt-1 text-xs">
+                        {it.msgs} mensagens
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { Sidebar, Topbar } from "@/components/shell";
+import { AlunoSidebar } from "@/components/shell";
 import { getCurrentTenant } from "@/lib/tenants/server";
 
 export const metadata: Metadata = {
   title: "Aluno · Nexus Education",
   robots: { index: false, follow: false },
 };
+
+const STUDENT_NAME = "João Pedro Silva";
 
 export default async function AlunoLayout({
   children,
@@ -14,12 +16,9 @@ export default async function AlunoLayout({
 }) {
   const tenant = await getCurrentTenant();
   return (
-    <div className="bg-canvas grid h-screen grid-cols-[260px_1fr] overflow-hidden">
-      <Sidebar layer="aluno" tenant={tenant} />
-      <main className="scroll-thin flex min-h-0 flex-col overflow-auto">
-        <Topbar layer="aluno" />
-        <div className="flex-1">{children}</div>
-      </main>
+    <div className="bg-canvas grid h-screen grid-cols-[280px_1fr] overflow-hidden">
+      <AlunoSidebar tenant={tenant} studentName={STUDENT_NAME} />
+      <main className="flex min-h-0 flex-col overflow-hidden">{children}</main>
     </div>
   );
 }
