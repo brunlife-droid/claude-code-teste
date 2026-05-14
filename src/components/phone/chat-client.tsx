@@ -17,6 +17,7 @@ interface Message {
   content: string;
   hora?: string;
   streaming?: boolean;
+  imageUrl?: string;
 }
 
 interface ChatClientProps {
@@ -39,42 +40,72 @@ export function ChatClient({ tenant, initialMessages }: ChatClientProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const tutorInitial = tenant.tutorName[0];
 
-  // Auto-scroll
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = ""; // reseta para permitir reupload do mesmo arquivo
 
-  async function handleSend(e: FormEvent) {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text || sending) return;
-
+    setUploading(true);
     const now = formatTime(new Date());
-    const userMsg: Message = { role: "user", content: text, hora: now };
-    const placeholder: Message = {
-      role: "assistant",
-      content: "",
-      hora: now,
-      streaming: true,
-    };
-    const next = [...messages, userMsg, placeholder];
-    setMessages(next);
-    setInput("");
-    setSending(true);
 
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("kind", "image");
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "upload failed");
+
+      const userMsg: Message = {
+        role: "user",
+        content: "Olha essa questão pra mim:",
+        imageUrl: data.file.url,
+        hora: now,
+      };
+      const placeholder: Message = {
+        role: "assistant",
+        content: "",
+        hora: now,
+        streaming: true,
+      };
+      const next = [...messages, userMsg, placeholder];
+      setMessages(next);
+
+      await streamReply(next);
+    } catch (err) {
+      console.error(err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            "Não consegui receber sua foto agora. Tente de novo, por favor.",
+          hora: now,
+        },
+      ]);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function streamReply(history: Message[]) {
+    setSending(true);
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: next
+          messages: history
             .filter((m) => !m.streaming)
-            .map((m) => ({ role: m.role, content: m.content })),
+            .map((m) => ({
+              role: m.role,
+              content: m.imageUrl ? `[foto enviada] ${m.content}` : m.content,
+            })),
         }),
       });
 
@@ -91,10 +122,8 @@ export function ChatClient({ tenant, initialMessages }: ChatClientProps) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-
         const lines = buffer.split("\n\n");
         buffer = lines.pop() ?? "";
-
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           try {
@@ -120,7 +149,7 @@ export function ChatClient({ tenant, initialMessages }: ChatClientProps) {
               });
             }
           } catch {
-            // ignora linhas malformadas
+            // skip malformed
           }
         }
       }
@@ -128,17 +157,46 @@ export function ChatClient({ tenant, initialMessages }: ChatClientProps) {
       console.error(err);
       setMessages((prev) => {
         const copy = [...prev];
-        copy[copy.length - 1] = {
-          role: "assistant",
-          content:
-            "Tive um problema pra conectar agora. Tenta de novo daqui a pouco?",
-          hora: now,
-        };
+        const last = copy[copy.length - 1];
+        if (last && last.streaming) {
+          copy[copy.length - 1] = {
+            role: "assistant",
+            content:
+              "Tive um problema pra conectar agora. Tenta de novo daqui a pouco?",
+            hora: formatTime(new Date()),
+          };
+        }
         return copy;
       });
     } finally {
       setSending(false);
     }
+  }
+
+  // Auto-scroll
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  async function handleSend(e: FormEvent) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || sending) return;
+
+    const now = formatTime(new Date());
+    const userMsg: Message = { role: "user", content: text, hora: now };
+    const placeholder: Message = {
+      role: "assistant",
+      content: "",
+      hora: now,
+      streaming: true,
+    };
+    const next = [...messages, userMsg, placeholder];
+    setMessages(next);
+    setInput("");
+    await streamReply(next);
   }
 
   function applySuggestion(text: string) {
@@ -226,19 +284,30 @@ export function ChatClient({ tenant, initialMessages }: ChatClientProps) {
 
       {/* Input */}
       <form onSubmit={handleSend} className="border-border border-t px-6 py-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
         <div className="mx-auto max-w-[760px]">
           <div className="bg-surface border-border-strong focus-within:border-primary focus-within:shadow-[0_0_0_3px_var(--primary-soft)] flex items-end gap-2 rounded-2xl border p-3 transition-all">
             <button
               type="button"
               aria-label="Anexar"
-              className="text-text-muted hover:bg-surface-2 shrink-0 rounded-md p-2 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || sending}
+              className="text-text-muted hover:bg-surface-2 shrink-0 rounded-md p-2 transition-colors disabled:opacity-40"
             >
               <Paperclip size={18} />
             </button>
             <button
               type="button"
               aria-label="Tirar foto"
-              className="text-text-muted hover:bg-surface-2 shrink-0 rounded-md p-2 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || sending}
+              className="text-text-muted hover:bg-surface-2 shrink-0 rounded-md p-2 transition-colors disabled:opacity-40"
             >
               <ImageIcon size={18} />
             </button>
@@ -295,10 +364,20 @@ function MessageBubble({
 }) {
   if (message.role === "user") {
     return (
-      <div className="flex justify-end">
-        <div className="bg-surface-2 max-w-[80%] rounded-2xl rounded-tr-md px-4 py-3 text-[15px] leading-relaxed">
-          {message.content}
-        </div>
+      <div className="flex flex-col items-end gap-1.5">
+        {message.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={message.imageUrl}
+            alt="Foto enviada"
+            className="border-border max-h-[300px] max-w-[60%] rounded-2xl rounded-tr-md border object-cover shadow-[var(--shadow-sm)]"
+          />
+        )}
+        {message.content && (
+          <div className="bg-surface-2 max-w-[80%] rounded-2xl rounded-tr-md px-4 py-3 text-[15px] leading-relaxed">
+            {message.content}
+          </div>
+        )}
       </div>
     );
   }
