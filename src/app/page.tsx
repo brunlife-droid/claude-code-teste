@@ -23,11 +23,11 @@ export default function Home() {
             <a href="#produto" className="hover:text-text">
               Produto
             </a>
-            <a href="#fundamento" className="hover:text-text">
-              Fundamento
-            </a>
             <Link href="/internal" className="hover:text-text">
               Design System
+            </Link>
+            <Link href="/admin" className="hover:text-text">
+              Console
             </Link>
           </nav>
         </div>
@@ -60,16 +60,16 @@ export default function Home() {
             identidade local. Em conformidade com a LGPD desde o desenho.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Link href="/internal">
+            <Link href="/admin">
               <Button size="lg" iconRight={<ArrowRight size={16} />}>
+                Abrir console
+              </Button>
+            </Link>
+            <Link href="/internal">
+              <Button size="lg" variant="secondary">
                 Ver design system
               </Button>
             </Link>
-            <a href="#produto">
-              <Button size="lg" variant="secondary">
-                Conhecer o produto
-              </Button>
-            </a>
           </div>
         </section>
 
