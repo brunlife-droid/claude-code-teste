@@ -2,7 +2,7 @@
 
 > **Atualizar este arquivo sempre que o estado do projeto mudar.** Foto rápida do que está pronto, o que está em andamento e o que ainda não foi tocado.
 >
-> Última atualização: 2026-05-15
+> Última atualização: 2026-05-15 (tutora v4.3 + RAG + admin LLM macro)
 
 ---
 
@@ -25,6 +25,9 @@
 - **S1 Dashboard da Secretaria real**: KPIs da rede inteira (total alunos, engajados 7d, profs/turmas/escolas, em risco, proficiência média) vêm do DB. IDEB e indicadores Nexus em baixo ainda mockados (gov data que não temos).
 - **P2 Copiloto LLM**: `/professor/copiloto` gera plano de aula via streaming (Claude Haiku 4.5 via OpenRouter, fallback mock). Form (disciplina/série/tema/duração) → SSE → Markdown render com cursor blinking. Sem persistência ainda.
 - **P3 Correção de redação**: `/professor/correcao` analisa texto colado nas 5 competências ENEM (GPT-4o-mini via OpenRouter, fallback Haiku). Form com nome do aluno + tema + textarea + botão. Streaming Markdown. Sem persistência ainda.
+- **Tutora v4.3 socrática + RAG da turma**: prompt do `chat_student` reescrito com regras explícitas de não entregar resposta antes do aluno tentar. Slots `{{foco_pedagogico}}` (de `class_focus_skills`) e `{{contexto_material}}` (top-3 chunks via pgvector) injetados pelo `/api/chat`. Sem material relevante → tutora segue com base ampla.
+- **Material da turma no `/professor/turma`**: card com multi-select de habilidades BNCC pra foco + upload (PDF/DOCX/TXT/MD até 50MB) com status (pendente/processando/pronto/falhou) e remoção. Upload direto pro Vercel Blob via signed URL (`@vercel/blob/client`); `/api/material/process` extrai texto + chunks + embeddings (`text-embedding-3-small`).
+- **Config macro LLM no admin**: `/admin/configuracoes/llm` (papel `admin_nexus`) edita provider/modelo/temperature/maxTokens/fallback por capability e prompts versionados. Mudanças aplicam imediatamente (gateway lê DB com cache por request). Cai no fallback hardcoded sem DB ou sem registro.
 
 ## O que está mockado / não funcional ainda
 
@@ -33,10 +36,13 @@
 - P4 (gerar prova): só tela, sem LLM real plugado
 - P6 (perfil aluno), P7 (diário), P8 (biblioteca): mockados
 - Planos de aula e correções gerados pelo LLM ainda não persistem em DB
-- Telas Secretaria S2-S9 e Admin N2-N9: mockadas
+- Telas Secretaria S2-S9 e Admin N2-N7/N9: mockadas (N8 e N8b agora reais)
 - IDEB gráfico e Indicadores Nexus na S1 seguem com dados do mock
-- WhatsApp, OCR, áudio, PDF, RAG: nada começado
-- `audit_log`, `consent_log`: schema existe, sem writes
+- WhatsApp, OCR, áudio: nada começado (PDF e RAG agora funcionais via /professor/turma)
+- `audit_log`, `consent_log`: schema existe, sem writes (TODO marcado em `llm-actions.ts`)
+- Override de config LLM por tenant (hoje só macro global)
+- Reprocessamento manual de material que falhou (não tem botão "tentar de novo")
+- Mostrar "fonte" usada pela tutora abaixo da resposta no chat do aluno (transparência)
 - Busca/filtros do histórico A3 são UI estática (não filtram nada ainda)
 - `NEXTAUTH_SECRET` está em fallback inseguro (`"dev-only-secret-replace-me"`) — precisa setar na Vercel pra produção
 

@@ -10,6 +10,12 @@ import {
   loadClassRoster,
   scoreToProficiency,
 } from "@/lib/teacher/queries";
+import {
+  loadAvailableHabilities,
+  loadClassFocus,
+  loadClassMaterials,
+} from "@/lib/teacher/material-queries";
+import { MaterialPanel } from "./MaterialPanel";
 
 function heatColor(score: number) {
   if (score >= 0.85) return "var(--prof-advanced)";
@@ -60,9 +66,12 @@ export default async function TurmaPage() {
   }
 
   const cls = ctx.classes[0]!;
-  const [heatmap, roster] = await Promise.all([
+  const [heatmap, roster, available, focus, materials] = await Promise.all([
     loadClassHeatmap({ tenantId: tenant.id, classId }),
     loadClassRoster({ tenantId: tenant.id, classId }),
+    loadAvailableHabilities(),
+    loadClassFocus({ tenantId: tenant.id, classId }),
+    loadClassMaterials({ tenantId: tenant.id, classId }),
   ]);
 
   const total = roster.length;
@@ -126,6 +135,26 @@ export default async function TurmaPage() {
             </Card>
           ))}
         </div>
+
+        <MaterialPanel
+          classId={classId}
+          available={available.map((h) => ({
+            code: h.code,
+            area: h.area,
+            description: h.description,
+          }))}
+          selected={focus.map((f) => f.code)}
+          materials={materials.map((m) => ({
+            id: m.id,
+            name: m.name,
+            type: m.type,
+            status: m.status,
+            sizeBytes: m.sizeBytes,
+            error: m.error,
+            indexedAt: m.indexedAt ? m.indexedAt.toISOString() : null,
+            createdAt: m.createdAt.toISOString(),
+          }))}
+        />
 
         <Card className="p-0">
           <div className="border-border flex items-center justify-between border-b px-6 py-4">

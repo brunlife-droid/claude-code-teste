@@ -1,8 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { stream } from "@/lib/llm";
+import { buildFocusBlock, buildMaterialBlock } from "@/lib/llm/rag/context";
 import { getCurrentTenant } from "@/lib/tenants/server";
 import { auth } from "@/lib/auth";
-import { resolveStudentId } from "@/lib/db/student-resolver";
+import {
+  resolveStudentId,
+  resolveStudentClassId,
+} from "@/lib/db/student-resolver";
 import {
   createConversation,
   appendMessage,
@@ -103,6 +107,27 @@ export async function POST(request: NextRequest) {
         latencyMs?: number;
       } = {};
 
+      // RAG: foco pedagógico da turma + trechos relevantes do material.
+      // Resiliente — se algo falhar, slots vêm com placeholder neutro.
+      const classId = studentId
+        ? await resolveStudentClassId({ studentId })
+        : null;
+
+      const lastUserText = lastUserMessage?.content ?? "";
+      const [focoBlock, materialBlock] = classId
+        ? await Promise.all([
+            buildFocusBlock({ tenantId: tenant.id, classId }),
+            buildMaterialBlock({
+              tenantId: tenant.id,
+              classId,
+              query: lastUserText,
+            }),
+          ])
+        : [
+            "(Nenhuma habilidade marcada como foco no momento.)",
+            "(Sem material relevante encontrado para essa pergunta. Responda com seu conhecimento amplo.)",
+          ];
+
       try {
         for await (const chunk of stream({
           capability: "chat_student",
@@ -111,6 +136,8 @@ export async function POST(request: NextRequest) {
           systemContext: {
             tutor_name: tenant.tutorName,
             prefeitura: tenant.short,
+            foco_pedagogico: focoBlock,
+            contexto_material: materialBlock,
           },
         })) {
           if (chunk.type === "text" && chunk.text) {
