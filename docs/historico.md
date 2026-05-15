@@ -6,6 +6,19 @@
 
 ---
 
+## 2026-05-15 — Subida da v4.3 / RAG / admin LLM em produção (infra)
+
+Sessão operacional, sem código novo — só infra pra colocar a entrega anterior no ar.
+
+- **PR #1** (`brunlife-droid/claude-code-teste`) aberta a partir de `claude/finish-testing-deps-l0yIk` e mergeada (squash) em `25dffd4` na `main`. Vercel auto-deployou.
+- **Migration `0001`** aplicada manualmente no Neon via SQL Editor do navegador (Bruno só usa GitHub, sem psql local). Idempotente — alguns `IF NOT EXISTS` apontaram que extensões `vector`/`pgcrypto` e índice `chunks_embedding_hnsw_idx` já existiam de migration anterior, o que é OK. Validado via `SELECT` final que as 3 tabelas novas (`class_focus_skills`, `llm_routes`, `system_prompts`) e a coluna `documents.class_id` existem.
+- **Env var `OPENAI_API_KEY`** adicionada na Vercel (Production/Preview/Development). Redeploy disparado pra app enxergar a nova chave. Justificativa de ter chave OpenAI separada: OpenRouter não proxia embeddings — `text-embedding-3-small` precisa ir direto.
+- **Pendente**: provisionar Vercel Blob (Storage → Create → Blob → conectar ao projeto). Isso auto-injeta `BLOB_READ_WRITE_TOKEN` e desbloqueia upload de material da profe.
+
+**Por quê desse registro**: Bruno é fundador não-técnico — sessões futuras precisam saber qual estado de infra já existe em produção pra não pedir pra ele repetir passo que já foi feito (criar conta na OpenAI, aplicar migration etc.). Detalhes finos do que está/não está configurado ficam em `docs/contexto.md` seção "Estado de produção".
+
+---
+
 ## 2026-05-15 — Tutora socrática v4.3 + RAG da turma + config macro LLM no admin
 
 Sessão grande: três frentes pedidas pelo Bruno em paralelo.
