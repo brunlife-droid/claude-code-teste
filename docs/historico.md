@@ -6,6 +6,23 @@
 
 ---
 
+## 2026-05-15 — Dashboard P1 do Professor com dado real + seed da rede
+
+- **Seed expandido** `src/lib/db/seed-network.ts`: cria users de Ricardo/Cláudia/Bruno, `memberships` por papel (Ricardo escopado em `class-demo-7a`), 12 alunos do 7º A (João identificado e linkado ao user `u-joao`), 9 habilidades BNCC, e `student_proficiency` por aluno×habilidade com score jitter realista.
+- **Camada `src/lib/teacher/queries.ts`** com helpers graceful:
+  - `loadTeacherContext(userId, tenantId)` — turmas que o professor leciona via `memberships`.
+  - `loadDashboardKpis()` — total de alunos, engajados nos últimos 7 dias (via `conversations.updatedAt`), em risco (avg de proficiência < 0.45).
+  - `loadTopStudents()` — top 3 por proficiência média.
+- **P1 (`/professor`) refatorado** pra Server Component com dados reais do DB. KPIs, destaque da turma e nome do professor vêm da sessão+DB; alertas continuam mockados (próxima sessão).
+- **`scoreToProficiency()`** helper que mapeia score numérico (0..1) pra enum `proficiency` do schema, mantendo o `ProfBadge` UI.
+- Build/lint limpos.
+
+**Por quê**: P1 era o "olá Ricardo" mockado — perfeito pra demo mas inútil pra valida operação real. Agora se eu logo como Cláudia/Bruno cai em rota errada; logo como Ricardo vejo turma de verdade. Destrava P5 (turma), P6 (perfil aluno) e copiloto LLM nas próximas sessões.
+
+**Ainda mockados em /professor**: alertas (`ALERTAS_PROF`), próximas aulas, ferramentas LLM (P2/P3/P4) e telas /alunos /turma /diario /biblioteca.
+
+---
+
 ## 2026-05-15 — Tenants vêm do DB (com fallback in-code)
 
 - **`getCurrentTenant()` agora carrega do Postgres** via `loadTenantFromDb(id)`, cacheado por request com React `cache()`.

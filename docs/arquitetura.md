@@ -83,6 +83,14 @@ docs/                 # ROADMAP, contexto, arquitetura, histórico
 ### Headers do middleware
 `src/middleware.ts` injeta dois headers em toda request: `x-tenant-id` (tenant resolvido) e `x-pathname` (path original) — Server Components leem via `headers()`.
 
+### Queries por papel (Professor / Secretaria / Admin)
+Pra evitar Server Components fazerem Drizzle direto, cada área terá um módulo de queries:
+- `src/lib/teacher/queries.ts` (existe): `loadTeacherContext`, `loadDashboardKpis`, `loadTopStudents`, `scoreToProficiency`.
+- `src/lib/secretaria/queries.ts` (futuro).
+- `src/lib/admin/queries.ts` (futuro).
+
+Todas as queries seguem o mesmo contrato: graceful (sem DATABASE_URL → retorno vazio), `ensureNetworkSeeded()` chamado no entry point pra garantir dado demo.
+
 ## Convenções de código
 
 - TS strict. Variáveis e identificadores em inglês; strings de UI em pt-BR.
