@@ -2,7 +2,24 @@
 
 > **Atualizar este arquivo sempre que o estado do projeto mudar.** Foto rápida do que está pronto, o que está em andamento e o que ainda não foi tocado.
 >
-> Última atualização: 2026-05-15 (tutora v4.3 + RAG + admin LLM macro)
+> Última atualização: 2026-05-15 (tutora v4.3 + RAG + admin LLM macro + infra de produção parcial)
+
+---
+
+## Estado de produção (Vercel + Neon)
+
+- **Deploy alvo**: `claude-code-teste.vercel.app` (projeto `claude-code-teste` na org `brunlife-6820's`).
+- **Branch deployada**: `main`. PR #1 (`feat: tutora socrática v4.3 + RAG + admin LLM`) foi mergeado (squash) em `25dffd4` em 2026-05-15.
+- **Banco Neon**: projeto `nexus-education` em `AWS South America East 1 (São Paulo)`. Migration `0001_class_materials_focus_and_llm_config.sql` aplicada via SQL Editor do Neon — validado que `class_focus_skills`, `llm_routes`, `system_prompts` e coluna `documents.class_id` existem.
+- **Env vars configuradas na Vercel** (Production):
+  - `DATABASE_URL` ✅
+  - `OPENROUTER_API_KEY` ✅
+  - `OPENAI_API_KEY` ✅ (adicionada em 2026-05-15 — embeddings do RAG)
+  - `NEXTAUTH_URL` ✅
+  - `NEXTAUTH_SECRET` ✅
+- **Pendente pra fechar produção**:
+  - `BLOB_READ_WRITE_TOKEN` — depende de provisionar Vercel Blob no projeto (Storage → Create → Blob). Sem isso, upload de material PDF/DOCX vai falhar.
+  - Validação end-to-end: subir material real, conversar com a tutora pra confirmar que ela usa o trecho RAG.
 
 ---
 
