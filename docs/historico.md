@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-05-15 — P3 Correção de redação com GPT-4o-mini
+
+- **Novo prompt** `src/lib/llm/prompts/essay-correction.ts` v1.0 — avalia redação nas 5 competências ENEM (C1-C5), feedback no tom "colega corretor sugerindo devolutiva ao professor", não nota final. Inclui "Sugestão de devolutiva ao aluno" como parágrafo de fechamento.
+- **Gateway extendido**: `injectSystemPrompt` agora cobre 3 capabilities (`chat_student`, `plan_generation`, `essay_correction`). A `essay_correction` resolve pra `gpt-4o-mini` via OpenRouter (fallback claude-haiku-4-5 já configurado em `routes.ts`).
+- **Novo route handler** `/api/essay-correction` (POST, SSE stream) — exige sessão professor/coordenador/diretor/orientador. Body: `{ studentName, topic, essay }`. Limite de 8000 caracteres no texto.
+- **`/professor/correcao` refatorado**: Server Component delega pra `CorrecaoClient`. Form com nome do aluno, tema, textarea grande (min 420px) pra colar a redação e botão de corrigir. Streaming Markdown na direita com cursor blinking. Texto de exemplo já vem preenchido pra demo.
+- **Demo coerente**: a UI tem amostra de redação sobre desigualdade social (com "as pessoas" repetido 3x propositalmente pra IA marcar problema de coesão).
+- Sem persistência ainda (correções não salvam em DB).
+- Build/lint limpos.
+
+**Por quê**: P2 (copiloto) usa Claude. P3 (correção) usa GPT-4o-mini — exercita o roteamento real do gateway por capability e mostra que a abstração funciona. Também é o feature LLM mais "vendável" pra professor: corrigir redação leva ~15min por aluno × 28 alunos = 7h por bimestre. Com IA, vira 3min de revisão por aluno.
+
+**Ainda pendente em /professor**: P4 (gerar prova), P6 (perfil aluno), P7 (diário), P8 (biblioteca), persistência de planos+correções, alertas reais.
+
+---
+
 ## 2026-05-15 — P5 Turma real + S1 Secretaria real + P2 Copiloto LLM
 
 Três features em uma sessão (escopo: telas de leitura + primeira feature LLM do professor).

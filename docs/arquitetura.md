@@ -98,7 +98,7 @@ Cada capability tem rota (`src/lib/llm/routes.ts`) e prompt versionado (`src/lib
 | --- | --- | --- | --- |
 | `chat_student` | claude-haiku-4-5 | `student-tutor.ts` v4.2 | `/api/chat` |
 | `plan_generation` | claude-haiku-4-5 | `lesson-plan.ts` v1.0 | `/api/lesson-plan` |
-| `essay_correction` | gpt-4o-mini | (pendente) | (pendente) |
+| `essay_correction` | gpt-4o-mini | `essay-correction.ts` v1.0 | `/api/essay-correction` |
 | `bncc_classification` | claude-haiku-4-5 | (pendente) | (pendente) |
 | `sre_classification` | claude-haiku-4-5 | (pendente) | (pendente) |
 

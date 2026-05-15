@@ -24,14 +24,15 @@
 - **P5 Dashboard da Turma real**: heatmap students × habilidades BNCC + lista ordenada por proficiência + KPIs reais com empty states.
 - **S1 Dashboard da Secretaria real**: KPIs da rede inteira (total alunos, engajados 7d, profs/turmas/escolas, em risco, proficiência média) vêm do DB. IDEB e indicadores Nexus em baixo ainda mockados (gov data que não temos).
 - **P2 Copiloto LLM**: `/professor/copiloto` gera plano de aula via streaming (Claude Haiku 4.5 via OpenRouter, fallback mock). Form (disciplina/série/tema/duração) → SSE → Markdown render com cursor blinking. Sem persistência ainda.
+- **P3 Correção de redação**: `/professor/correcao` analisa texto colado nas 5 competências ENEM (GPT-4o-mini via OpenRouter, fallback Haiku). Form com nome do aluno + tema + textarea + botão. Streaming Markdown. Sem persistência ainda.
 
 ## O que está mockado / não funcional ainda
 
 - Contagens (`students`, `teachers`, `schools`) do Tenant ainda vêm do in-code overlay — DB não tem agregados
 - RLS escrita no SQL mas conexão atual bypassa (queries rodam como owner; políticas existem mas não enforçam)
-- P3 (correção redação), P4 (gerar prova): só telas, sem LLM real plugado
+- P4 (gerar prova): só tela, sem LLM real plugado
 - P6 (perfil aluno), P7 (diário), P8 (biblioteca): mockados
-- Planos de aula gerados pelo Copiloto ainda não persistem em DB
+- Planos de aula e correções gerados pelo LLM ainda não persistem em DB
 - Telas Secretaria S2-S9 e Admin N2-N9: mockadas
 - IDEB gráfico e Indicadores Nexus na S1 seguem com dados do mock
 - WhatsApp, OCR, áudio, PDF, RAG: nada começado
