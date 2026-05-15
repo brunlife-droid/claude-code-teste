@@ -6,6 +6,47 @@
 
 ---
 
+## 2026-05-15 — Tutora socrática v4.3 + RAG da turma + config macro LLM no admin
+
+Sessão grande: três frentes pedidas pelo Bruno em paralelo.
+
+**1. Tutora v4.3 — socrática reforçada + escopo generalista + slots de turma**
+- `src/lib/llm/prompts/student-tutor.ts` reescrito (v4.3). Seção "Método socrático é inegociável" com regras explícitas — nunca entregar resposta antes do aluno tentar pelo menos 2 vezes, sempre devolver pergunta investigativa, dar pistas mínimas.
+- Escopo deixa claro que ela é generalista forte (todas áreas BNCC 9-15 anos) — responde sobre QUALQUER tema mesmo sem material do professor.
+- Novos slots: `{{foco_pedagogico}}` (habilidades BNCC marcadas como foco da turma) e `{{contexto_material}}` (trechos RAG do material).
+- Slot vazio agora vem com placeholder textual neutro pra LLM não estranhar (Claude às vezes "comenta" string vazia).
+
+**2. Material do professor + RAG end-to-end**
+- Schema novo: `class_focus_skills` (turma × habilidade priorizada), colunas em `documents` (`classId`, `uploadedBy`, `kind`, `status`, `sizeBytes`, `error`).
+- Migration `0001_class_materials_focus_and_llm_config.sql` idempotente; cria também índice HNSW em `chunks.embedding`.
+- Upload **direto do browser pro Vercel Blob** via `@vercel/blob/client` + handler `/api/material/upload` com `handleUpload` — bypassa limite de 4.5MB do body de função. Teto de 50MB no token assinado.
+- Processamento em `/api/material/process`: baixa do Blob, extrai texto (`pdf-parse` p/ PDF, `mammoth` p/ DOCX, texto puro p/ TXT/MD), chunka (1800 chars + overlap 200), embedda em batch (`text-embedding-3-small` via OpenAI direto), persiste em `chunks`. `maxDuration = 300` pra caber arquivo grande.
+- Retrieve em `src/lib/llm/rag/retrieve.ts` — busca top-3 chunks por similaridade cosseno em pgvector, threshold 0.35.
+- `/api/chat` agora resolve `classId` do aluno e injeta foco + material no `systemContext` antes de chamar o gateway. Sem material relevante → slot diz "responda com seu conhecimento amplo".
+- Painel novo em `/professor/turma`: lista de habilidades BNCC com checkbox pra marcar foco + área de upload com lista de materiais (status pendente/processando/pronto/falhou) e botão de remover.
+
+**3. Tela admin de config macro LLM**
+- Novas tabelas: `llm_routes` (rota ativa por capability com provider/model/temperature/maxTokens/fallback) e `system_prompts` (prompts versionados, `active` único por capability via unique index parcial).
+- `src/lib/llm/config.ts` é o loader runtime: lê DB primeiro, cai pro hardcoded de `routes.ts`/`prompts/*` se DB indisponível ou query falhar. Cacheado por request via React `cache()`.
+- Gateway refatorado pra consumir o loader em vez do hardcoded direto. Mantém os fallbacks atuais como rede de segurança.
+- Página `/admin/configuracoes/llm` (linkada do sidebar como N8b): grid 2 colunas. Esquerda lista todas as 6 capabilities com selects de provider/modelo e inputs de temperature/maxTokens/fallback — salva via Server Action `upsertRoute`. Direita mostra prompts da capability selecionada com histórico de versões, edição inline (sempre cria nova versão, nunca sobrescreve), botões "Ativar" e "Apagar" (não permite apagar a ativa).
+- Versão "hardcoded" sempre aparece no histórico como fallback ativável (re-ativa simplesmente desativando o ativo do DB).
+
+**Por quê**: Bruno pediu que (1) a tutora não fique presa ao material — ela responde tudo, com socratismo de verdade; (2) o material da professora vire fonte primária quando houver; (3) ele consiga trocar modelo/temperatura/prompt sem deploy. Esses três viraram um vertical slice funcional end-to-end. Macro global por enquanto (sem override por tenant) — escolha consciente pra reduzir complexidade inicial.
+
+**Decisão técnica do upload 50MB**: usar client uploads do `@vercel/blob/client` ao invés de aumentar limite de função. Função só gera token assinado curto, browser PUT direto no Blob. Sem cap real (Vercel Blob aceita até 5GB); 50MB é teto de produto, não técnico.
+
+**Pendências conhecidas / Fase 2:**
+- Audit log dos edits do admin (TODO marcado em `llm-actions.ts`).
+- Mostrar "fonte" usada pela tutora abaixo da resposta no chat (transparência pro aluno).
+- Override por tenant das rotas (quando aparecer demanda real de uma prefeitura específica).
+- Reprocessamento manual de material falhado (botão "tentar de novo" no painel).
+- OCR pra PDF que é só imagem escaneada.
+
+**Build/lint**: limpos. 47 rotas geradas.
+
+---
+
 ## 2026-05-15 — P3 Correção de redação com GPT-4o-mini
 
 - **Novo prompt** `src/lib/llm/prompts/essay-correction.ts` v1.0 — avalia redação nas 5 competências ENEM (C1-C5), feedback no tom "colega corretor sugerindo devolutiva ao professor", não nota final. Inclui "Sugestão de devolutiva ao aluno" como parágrafo de fechamento.

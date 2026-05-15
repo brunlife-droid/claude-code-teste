@@ -355,9 +355,20 @@ export const documents = pgTable(
     tenantId: text("tenant_id").references(() => tenants.id, {
       onDelete: "restrict",
     }),
+    // classId NOT NULL quando kind = 'class_material' (PDF/DOCX subido pela profe)
+    classId: text("class_id").references(() => classes.id, {
+      onDelete: "cascade",
+    }),
+    uploadedBy: text("uploaded_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
     name: text("name").notNull(),
-    type: text("type").notNull(), // pdf | md | json
+    type: text("type").notNull(), // pdf | md | json | docx
+    kind: text("kind").notNull().default("national_library"), // class_material | national_library
+    status: text("status").notNull().default("ready"), // pending | processing | ready | failed
     sourceUrl: text("source_url"),
+    sizeBytes: integer("size_bytes"),
+    error: text("error"),
     tags: jsonb("tags").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     version: text("version"),
     indexedAt: timestamp("indexed_at"),
@@ -366,6 +377,7 @@ export const documents = pgTable(
   },
   (t) => ({
     tenantIdx: index("documents_tenant_idx").on(t.tenantId),
+    classIdx: index("documents_class_idx").on(t.classId),
   }),
 );
 
@@ -389,6 +401,73 @@ export const chunks = pgTable(
     documentIdx: index("chunks_document_idx").on(t.documentId),
     tenantIdx: index("chunks_tenant_idx").on(t.tenantId),
     // Índice HNSW para similaridade vetorial (criado em migration)
+  }),
+);
+
+// ═══════════════════════════════════════════════════════════════════
+// FOCO PEDAGÓGICO DA TURMA (habilidades BNCC priorizadas pela profe)
+// ═══════════════════════════════════════════════════════════════════
+
+export const classFocusSkills = pgTable(
+  "class_focus_skills",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "restrict" }),
+    classId: text("class_id")
+      .notNull()
+      .references(() => classes.id, { onDelete: "cascade" }),
+    habilityCode: text("hability_code")
+      .notNull()
+      .references(() => habilities.code, { onDelete: "restrict" }),
+    setBy: text("set_by").references(() => users.id, { onDelete: "set null" }),
+    note: text("note"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.classId, t.habilityCode] }),
+    tenantIdx: index("class_focus_skills_tenant_idx").on(t.tenantId),
+  }),
+);
+
+// ═══════════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO MACRO DA LLM (editada pelo Admin Nexus)
+// ═══════════════════════════════════════════════════════════════════
+
+// llm_routes: rota ativa por capability (modelo + parâmetros). Lida em
+// runtime pelo gateway com fallback para a tabela hardcoded em routes.ts.
+export const llmRoutes = pgTable("llm_routes", {
+  capability: text("capability").primaryKey(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  temperature: real("temperature"),
+  maxTokens: integer("max_tokens"),
+  fallbackProvider: text("fallback_provider"),
+  fallbackModel: text("fallback_model"),
+  active: boolean("active").notNull().default(true),
+  updatedBy: text("updated_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// system_prompts: prompts versionados por capability. Editar = criar
+// nova versão. Flag `active` controla qual está em uso (uma por capability).
+export const systemPrompts = pgTable(
+  "system_prompts",
+  {
+    id: text("id").primaryKey(),
+    capability: text("capability").notNull(),
+    version: text("version").notNull(),
+    content: text("content").notNull(),
+    active: boolean("active").notNull().default(false),
+    createdBy: text("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    capabilityIdx: index("system_prompts_capability_idx").on(t.capability),
   }),
 );
 

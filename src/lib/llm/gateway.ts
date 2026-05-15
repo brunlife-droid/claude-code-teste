@@ -5,8 +5,8 @@
  * `openai()` direto de componentes/server actions.
  *
  * Responsabilidades:
- * - Roteamento capability → modelo via tabela (routes.ts)
- * - Renderização de prompts versionados com contexto do tenant/aluno
+ * - Roteamento capability → modelo via `loadRoute()` (DB → fallback hardcoded)
+ * - Renderização de prompt versionado via `loadActivePrompt()` (DB → fallback)
  * - Fallback automático para mock quando API key ausente
  * - Logging de tokens/latência/custo por tenant (TODO: persistir em audit_log)
  * - Streaming uniforme via AsyncGenerator
@@ -17,10 +17,8 @@ import type {
   ChatCompletionResponse,
   StreamChunk,
 } from "./types";
-import { routeFor } from "./routes";
-import { STUDENT_TUTOR_PROMPT, renderPrompt } from "./prompts/student-tutor";
-import { LESSON_PLAN_PROMPT } from "./prompts/lesson-plan";
-import { ESSAY_CORRECTION_PROMPT } from "./prompts/essay-correction";
+import { loadRoute, loadActivePrompt } from "./config";
+import { renderPrompt } from "./prompts/student-tutor";
 import { mockComplete, mockStream } from "./providers/mock";
 import { openrouterComplete, openrouterStream } from "./providers/openrouter";
 
@@ -31,89 +29,108 @@ function shouldUseMock(provider: string): boolean {
   return false;
 }
 
-function injectSystemPrompt(
+const DEFAULTS_BY_CAPABILITY: Record<string, Record<string, string>> = {
+  chat_student: {
+    tutor_name: "Profe Mari",
+    prefeitura: "Alfenas",
+    aluno_context: "(contexto vazio — sem DB)",
+    historico_resumido: "(sem histórico)",
+    foco_pedagogico: "(Nenhuma habilidade marcada como foco no momento.)",
+    contexto_material:
+      "(Sem material relevante encontrado para essa pergunta. Responda com seu conhecimento amplo.)",
+  },
+  plan_generation: {
+    prefeitura: "Alfenas",
+    tenant_uf: "MG",
+  },
+  essay_correction: {
+    prefeitura: "Alfenas",
+    tenant_uf: "MG",
+    student_name: "(aluno)",
+    essay_topic: "(tema não informado)",
+  },
+};
+
+async function injectSystemPrompt(
   req: ChatCompletionRequest,
-): ChatCompletionRequest {
+): Promise<{ req: ChatCompletionRequest; promptVersion?: string }> {
   const hasSystem = req.messages.some((m) => m.role === "system");
-  if (hasSystem) return req;
+  if (hasSystem) return { req };
 
-  let rendered: string | null = null;
-  if (req.capability === "chat_student") {
-    rendered = renderPrompt(STUDENT_TUTOR_PROMPT.content, {
-      tutor_name: "Profe Mari",
-      prefeitura: "Alfenas",
-      aluno_context: "(contexto vazio na Fase 0 — sem DB)",
-      historico_resumido: "(sem histórico)",
-      ...req.systemContext,
-    });
-  } else if (req.capability === "plan_generation") {
-    rendered = renderPrompt(LESSON_PLAN_PROMPT.content, {
-      prefeitura: "Alfenas",
-      tenant_uf: "MG",
-      ...req.systemContext,
-    });
-  } else if (req.capability === "essay_correction") {
-    rendered = renderPrompt(ESSAY_CORRECTION_PROMPT.content, {
-      prefeitura: "Alfenas",
-      tenant_uf: "MG",
-      student_name: "(aluno)",
-      essay_topic: "(tema não informado)",
-      ...req.systemContext,
-    });
-  }
+  const prompt = await loadActivePrompt(req.capability);
+  if (!prompt) return { req };
 
-  if (!rendered) return req;
+  const defaults = DEFAULTS_BY_CAPABILITY[req.capability] ?? {};
+  const rendered = renderPrompt(prompt.content, {
+    ...defaults,
+    ...req.systemContext,
+  });
+
+  return {
+    req: {
+      ...req,
+      messages: [{ role: "system", content: rendered }, ...req.messages],
+    },
+    promptVersion: prompt.version,
+  };
+}
+
+function withRouteDefaults(
+  req: ChatCompletionRequest,
+  route: { temperature?: number; maxTokens?: number },
+): ChatCompletionRequest {
   return {
     ...req,
-    messages: [{ role: "system", content: rendered }, ...req.messages],
+    temperature: req.temperature ?? route.temperature,
+    maxTokens: req.maxTokens ?? route.maxTokens,
   };
 }
 
 export async function complete(
   req: ChatCompletionRequest,
 ): Promise<ChatCompletionResponse> {
-  const route = routeFor(req.capability);
-  const enriched = injectSystemPrompt(req);
+  const route = await loadRoute(req.capability);
+  const { req: enriched } = await injectSystemPrompt(req);
+  const withDefaults = withRouteDefaults(enriched, route);
 
   if (shouldUseMock(route.provider)) {
-    return mockComplete(enriched);
+    return mockComplete(withDefaults);
   }
 
   if (route.provider === "openrouter") {
     try {
-      return await openrouterComplete(enriched, route.model);
+      return await openrouterComplete(withDefaults, route.model);
     } catch (err) {
       console.error("openrouter failed, falling back to mock", err);
-      return mockComplete(enriched);
+      return mockComplete(withDefaults);
     }
   }
 
-  // Outros providers (ex: openai direto para embeddings) podem ser
-  // implementados aqui no futuro. Por ora, caem no mock.
-  return mockComplete(enriched);
+  return mockComplete(withDefaults);
 }
 
 export async function* stream(
   req: ChatCompletionRequest,
 ): AsyncGenerator<StreamChunk> {
-  const route = routeFor(req.capability);
-  const enriched = injectSystemPrompt(req);
+  const route = await loadRoute(req.capability);
+  const { req: enriched } = await injectSystemPrompt(req);
+  const withDefaults = withRouteDefaults(enriched, route);
 
   if (shouldUseMock(route.provider)) {
-    yield* mockStream(enriched);
+    yield* mockStream(withDefaults);
     return;
   }
 
   if (route.provider === "openrouter") {
     try {
-      yield* openrouterStream(enriched, route.model);
+      yield* openrouterStream(withDefaults, route.model);
       return;
     } catch (err) {
       console.error("openrouter stream failed, falling back to mock", err);
-      yield* mockStream(enriched);
+      yield* mockStream(withDefaults);
       return;
     }
   }
 
-  yield* mockStream(enriched);
+  yield* mockStream(withDefaults);
 }

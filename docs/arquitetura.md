@@ -92,17 +92,30 @@ Pra evitar Server Components fazerem Drizzle direto, cada área tem um módulo d
 Todas as queries seguem o mesmo contrato: graceful (sem DATABASE_URL → retorno vazio), `ensureNetworkSeeded()` chamado no entry point pra garantir dado demo.
 
 ### Capabilities LLM ativas
-Cada capability tem rota (`src/lib/llm/routes.ts`) e prompt versionado (`src/lib/llm/prompts/`). System prompt injetado pelo `gateway.ts` quando o capability tem template — chamadores não precisam montar mensagem de sistema.
+Cada capability tem rota e prompt versionado. **Em runtime, o gateway lê a rota e o prompt ativos do DB via `src/lib/llm/config.ts`**, caindo no hardcoded (`routes.ts`/`prompts/*.ts`) quando o DB não tem registro ou está indisponível. Isso permite editar config (provider, modelo, temperature, maxTokens, prompt) **sem deploy** pela tela `/admin/configuracoes/llm`.
 
 | Capability | Modelo primário | Prompt | API route |
 | --- | --- | --- | --- |
-| `chat_student` | claude-haiku-4-5 | `student-tutor.ts` v4.2 | `/api/chat` |
+| `chat_student` | claude-haiku-4-5 | `student-tutor.ts` v4.3 (socrático reforçado + slots RAG) | `/api/chat` |
 | `plan_generation` | claude-haiku-4-5 | `lesson-plan.ts` v1.0 | `/api/lesson-plan` |
 | `essay_correction` | gpt-4o-mini | `essay-correction.ts` v1.0 | `/api/essay-correction` |
 | `bncc_classification` | claude-haiku-4-5 | (pendente) | (pendente) |
 | `sre_classification` | claude-haiku-4-5 | (pendente) | (pendente) |
+| `embeddings_rag` | text-embedding-3-small (OpenAI direto) | (não usa prompt) | usado em `rag/retrieve.ts` e `rag/extract.ts` |
 
-Convenção pra nova capability: 1) adicionar rota em `routes.ts`, 2) criar prompt versionado em `prompts/`, 3) extender `injectSystemPrompt` no gateway, 4) criar route handler `/api/<capability>` que valida sessão e papel e usa `stream()` do gateway.
+Convenção pra nova capability: 1) adicionar rota em `routes.ts` (fallback hardcoded), 2) criar prompt versionado em `prompts/`, 3) atualizar `HARDCODED_PROMPTS` em `config.ts`, 4) criar route handler `/api/<capability>` que valida sessão e papel e usa `stream()` do gateway. A tela admin lista a nova capability automaticamente.
+
+### RAG da turma (material do professor)
+- **Schema**: `documents` ganhou `class_id` + `kind` (`class_material` | `national_library`) + `status` (`pending`|`processing`|`ready`|`failed`); `chunks` tem `embedding vector(1536)` + índice HNSW (migration 0001).
+- **Upload**: client uploads do `@vercel/blob/client` — browser PUT direto na Blob com token assinado por `/api/material/upload`. Teto 50MB no token; arquivo grande nunca passa por função do servidor (bypassa limite de 4.5MB).
+- **Processamento**: `/api/material/process` baixa o blob, extrai texto (`pdf-parse`/`mammoth`/texto puro), chunka (1800c + 200c overlap), embedda em lotes de 32 via `text-embedding-3-small`, persiste em `chunks`. `maxDuration = 300`s. Idempotente por `documentId`.
+- **Retrieve em conversa**: `rag/retrieve.ts` embedda a última pergunta do aluno e busca top-3 chunks da turma do aluno por cosine distance (threshold 0.35). `rag/context.ts` formata os slots `{{foco_pedagogico}}` (de `class_focus_skills`) e `{{contexto_material}}` que o prompt v4.3 espera. `/api/chat` faz isso antes do `stream()`.
+- **Foco pedagógico**: `class_focus_skills` é a lista de habilidades BNCC marcadas pela profe em `/professor/turma` (multi-select). Vão pro prompt como prioridade — a tutora ainda responde sobre outros temas, só dá preferência a esses.
+
+### Configuração macro LLM (admin)
+- **Tabelas**: `llm_routes` (PK = capability, uma rota ativa por capability) e `system_prompts` (versionado, índice único parcial garante 1 ativa por capability).
+- **Loader**: `src/lib/llm/config.ts` exporta `loadRoute()` e `loadActivePrompt()` cacheados por request via React `cache()`. DB → fallback hardcoded.
+- **Editor**: `/admin/configuracoes/llm` (`requireRole("admin_nexus")`). Edição de prompt **sempre cria nova versão** (anti-foot-gun); ativar é passo separado. Apagar versão ativa é bloqueado. "Ativar hardcoded" = desativar todas do DB pra capability, gateway cai no fallback.
 
 ## Convenções de código
 

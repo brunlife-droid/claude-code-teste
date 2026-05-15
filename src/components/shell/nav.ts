@@ -119,6 +119,7 @@ export const LAYERS: Record<LayerKey, LayerConfig> = {
           { id: "N6", label: "Financeiro", href: "/admin/financeiro" },
           { id: "N7", label: "Observabilidade", href: "/admin/observabilidade" },
           { id: "N8", label: "Configurações globais", href: "/admin/configuracoes" },
+          { id: "N8b", label: "Configuração macro · LLM", href: "/admin/configuracoes/llm" },
           { id: "N9", label: "Suporte/CSM", href: "/admin/suporte" },
         ],
       },
