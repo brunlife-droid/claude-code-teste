@@ -46,9 +46,12 @@ docs/                 # ROADMAP, contexto, arquitetura, histórico
 ## Decisões arquiteturais ativas
 
 ### Multi-tenancy
-- **Single Postgres + `tenant_id` em todas as tabelas + Postgres RLS** como segunda barreira.
+- **Single Postgres + `tenant_id` em todas as tabelas + Postgres RLS** como segunda barreira (políticas estão no SQL mas conexão atual bypassa — pendente).
 - **Não** schema-per-tenant.
 - Resolução de tenant por subdomínio em prod (`alfenas.nexus.edu`), por path/header em dev.
+- `getCurrentTenant()` (em `src/lib/tenants/server.ts`) carrega a row do Postgres via `loadTenantFromDb()` (cacheado por request com `cache()` do React). `ensureTenantsSeeded()` faz o INSERT idempotente das 3 prefeituras no primeiro hit por instância.
+- Sem `DATABASE_URL` ou row inexistente: cai pra `TENANTS` in-code (mesmo shape `Tenant`) — dev sem DB continua funcionando.
+- Campos derivados (`population`, `students`, `teachers`, `schools`) ainda vêm do overlay in-code até COUNT real existir.
 
 ### LLM gateway
 - Tudo passa por `src/lib/llm/gateway.ts`. Componentes nunca chamam OpenRouter direto.
@@ -67,8 +70,18 @@ docs/                 # ROADMAP, contexto, arquitetura, histórico
 - Todas as funções são **graceful**: sem `DATABASE_URL` retornam `null`/`[]` sem propagar erro — o chat continua streamando em modo efêmero.
 - IDs gerados com `crypto.randomUUID()` no app (nunca no DB). Convenção do schema (`text PK`).
 - A API `/api/chat` envia chunk SSE `{ type: "meta", conversationId }` no início do stream pra o cliente atualizar URL via `history.replaceState` — refresh preserva a conversa.
-- Ownership de conversation validado por `studentId` antes de retomar (`?id=`) ou continuar via API (proteção contra IDOR).
-- Demo aluno (`u-joao`) é hardcoded por enquanto. Quando login real estiver pronto, trocar `ensureDemoStudent()` por lookup de `student` via `userId` da sessão.
+- Ownership de conversation validado por `studentId` derivado da sessão antes de retomar (`?id=`) ou continuar via API (proteção contra IDOR).
+
+### Auth + autorização
+- NextAuth v5 (Credentials provider com whitelist demo enquanto `DATABASE_URL` não tem users seedados).
+- **Server**: `src/lib/auth/session.ts` exporta `requireAuth()` e `requireRole(...)` — Server Components/layouts chamam isso no topo. Não logado vira redirect pra `/entrar?callbackUrl=<x-pathname>`; papel errado vira redirect pra própria home do papel (`getLayerHomePath`).
+- **Client**: `src/lib/auth/session-paths.ts` é client-safe (sem `next/headers`, sem `redirect`) — login form importa daqui pra computar destino pós-signIn.
+- **API routes**: chamam `auth()` direto + retornam 401/403 conforme caso. Ex: `/api/chat`.
+- **Mapa de papéis → home**: `aluno/responsavel → /aluno/chat`, `professor/coordenador/diretor/orientador → /professor`, `secretaria → /secretaria`, `admin_nexus → /admin`.
+- **Resolução de `studentId`** centralizada em `src/lib/db/student-resolver.ts` — para o demo `u-joao`, dispara seed idempotente; pros demais, lookup em `students` por `(userId, tenantId)`. Retorna `null` se nada bater — chamador trata como efêmero.
+
+### Headers do middleware
+`src/middleware.ts` injeta dois headers em toda request: `x-tenant-id` (tenant resolvido) e `x-pathname` (path original) — Server Components leem via `headers()`.
 
 ## Convenções de código
 

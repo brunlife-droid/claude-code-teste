@@ -17,16 +17,18 @@
 - Multi-tenant foundation (middleware + tabela `tenants` + tokens CSS por tenant)
 - Deploy Vercel forçado em `gru1` (São Paulo)
 - **Loop do Aluno completo**: chat A2 persiste no DB (conversations + messages), histórico A3 lê do Postgres com agrupamento por data, `?id=` reabre conversa antiga. Graceful sem `DATABASE_URL` (cai pra modo efêmero).
+- **Auth real enforced**: `/aluno`, `/professor`, `/secretaria`, `/admin` exigem sessão via `requireRole(...)` no layout. `/api/chat` retorna 401/403 sem sessão. Login redireciona por papel pra `getLayerHomePath(role)`. Ownership de conversation validada por `studentId` da sessão (não mais teatro).
+- **Tenants do DB**: `getCurrentTenant()` lê do Postgres com seed idempotente das 3 prefeituras. Fallback in-code se não houver `DATABASE_URL`. White-label dinâmico funciona (`?tenant=pousoalegre` muda cores/nome do tutor).
 
 ## O que está mockado / não funcional ainda
 
-- White-label dinâmico carregado por tenant — só 1 tenant hardcoded
-- RLS escrita no SQL mas não validada com testes
-- Login real por papel (Aluno/Prof/Secretaria/Admin) — só demo (auth não enforced em `/aluno/*`)
-- Aluno demo `u-joao` é hardcoded — todo chat é atribuído a ele independente de quem está logado
+- Contagens (`students`, `teachers`, `schools`) do Tenant ainda vêm do in-code overlay — DB não tem agregados
+- RLS escrita no SQL mas conexão atual bypassa (queries rodam como owner; políticas existem mas não enforçam)
+- Só `u-joao` tem seed automático de student/school/class. Outros demo users (professor/secretaria/admin) logam mas não têm registros relacionais correspondentes — Professor não consegue listar "minha turma" porque a turma só existe pro João.
 - WhatsApp, OCR, áudio, PDF, RAG: nada começado
 - `audit_log`, `consent_log`: schema existe, sem writes
 - Busca/filtros do histórico A3 são UI estática (não filtram nada ainda)
+- `NEXTAUTH_SECRET` está em fallback inseguro (`"dev-only-secret-replace-me"`) — precisa setar na Vercel pra produção
 
 ## Próximos passos sugeridos (em discussão)
 
