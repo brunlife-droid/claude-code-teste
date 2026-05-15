@@ -15,17 +15,62 @@ import {
   INDICADORES_NEXUS,
 } from "@/lib/mocks";
 import { getCurrentTenant } from "@/lib/tenants/server";
+import { requireRole } from "@/lib/auth/session";
+import {
+  loadNetworkKpis,
+  loadSchoolsHealth,
+} from "@/lib/secretaria/queries";
 
-const KPIS = [
-  { label: "Alunos ativos", value: "8.247", delta: "+12% YoY", positive: true },
-  { label: "Profs. engajados", value: "518", delta: "85% da base", positive: true },
-  { label: "IDEB · 2025", value: "5,7", delta: "+0,3 vs meta", positive: true },
-  { label: "Escolas em risco", value: "1", delta: "−1 mês ant.", positive: true },
-];
+function pctLabel(score: number): string {
+  if (score === 0) return "—";
+  return `${(score * 100).toFixed(0)}%`;
+}
 
 export default async function SecretariaDashboard() {
+  await requireRole("secretaria");
   const tenant = await getCurrentTenant();
+  const networkKpis = await loadNetworkKpis({ tenantId: tenant.id });
+  // loadSchoolsHealth disponível pra renderizar tabela real; UI atual ainda usa mocks
+  void loadSchoolsHealth;
+
   const escolasRisco = ESCOLAS_ALFENAS.filter((e) => e.risco !== "baixo");
+
+  const engagementPct =
+    networkKpis.studentsTotal > 0
+      ? Math.round(
+          (networkKpis.studentsEngaged7d / networkKpis.studentsTotal) * 100,
+        )
+      : 0;
+
+  const KPIS = [
+    {
+      label: "Alunos ativos",
+      value: networkKpis.studentsTotal.toLocaleString("pt-BR"),
+      delta: `${networkKpis.studentsEngaged7d} engajados nos últimos 7d`,
+      positive: true,
+    },
+    {
+      label: "Professores",
+      value: networkKpis.teachersTotal.toString(),
+      delta: `${networkKpis.classesTotal} turmas · ${networkKpis.schoolsTotal} escolas`,
+      positive: true,
+    },
+    {
+      label: "Proficiência média",
+      value: pctLabel(networkKpis.avgProficiency),
+      delta: "agregado da rede no Postgres",
+      positive: networkKpis.avgProficiency >= 0.6,
+    },
+    {
+      label: "Alunos em risco",
+      value: networkKpis.studentsAtRisk.toString(),
+      delta:
+        networkKpis.studentsAtRisk === 0
+          ? "ninguém em risco"
+          : `${engagementPct}% da rede ativa`,
+      positive: networkKpis.studentsAtRisk === 0,
+    },
+  ];
 
   return (
     <>

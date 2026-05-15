@@ -6,6 +6,38 @@
 
 ---
 
+## 2026-05-15 — P5 Turma real + S1 Secretaria real + P2 Copiloto LLM
+
+Três features em uma sessão (escopo: telas de leitura + primeira feature LLM do professor).
+
+**P5 — `/professor/turma` real:**
+- `loadClassHeatmap()` em `teacher/queries.ts` — matriz students × habilities com scores reais de `student_proficiency`.
+- `loadClassRoster()` — lista com avg proficiency, nº de conversas e última atividade (max(updatedAt) por aluno).
+- Página refatorada pra Server Component: KPIs (alunos, engajados, em risco, proficiência média), heatmap real e roster ordenado por avg score. Empty states pra turma sem dado.
+
+**S1 — `/secretaria` real:**
+- Nova camada `src/lib/secretaria/queries.ts` — espelha o padrão do teacher.
+- `loadNetworkKpis()` agrega rede inteira por tenant: total alunos, engajados últimos 7d, professores (via memberships), escolas, turmas, em risco e proficiência média.
+- `loadSchoolsHealth()` exportada mas ainda não renderizada (IDEB/indicadores Nexus em baixo seguem mock — gov data que não temos no DB).
+- Página agora exige `requireRole("secretaria")` e KPIs do topo são reais.
+
+**P2 — `/professor/copiloto` com LLM:**
+- Novo prompt `src/lib/llm/prompts/lesson-plan.ts` v1.0 — estrutura abertura/investigação/sistematização/avaliação + adaptações, BNCC obrigatória, realista pra rede municipal sem Smart TV.
+- `gateway.ts` extendido pra injetar system prompt da capability `plan_generation` (Claude Haiku 4.5 via OpenRouter, fallback mock).
+- Novo route handler `/api/lesson-plan` (POST, SSE stream) — exige sessão professor/coordenador/diretor/orientador.
+- `copiloto/page.tsx` virou Server Component que delega pra `CopilotoClient` — formulário (disciplina/série/tema/duração) + área de streaming com cursor blinking. Sem persistência ainda (planos não salvam no DB nessa iteração).
+- Build/lint limpos.
+
+**Por quê**: P5 era a tela diária do professor (perfeito pra demonstrar valor numa visita à secretaria), S1 era a vitrine pro prefeito ver a rede, P2 era o primeiro contato real com IA na área do professor. Juntas formam uma demo coerente.
+
+**Ainda mockados/pendentes:**
+- /professor: alertas (`ALERTAS_PROF`), próximas aulas, P3 (correção), P4 (provas), P6 (perfil aluno), P7 (diário), P8 (biblioteca)
+- /secretaria: IDEB gráfico, Indicadores Nexus, tabela "Escolas em risco" (precisaria de IEB no DB)
+- Planos de aula gerados não persistem ainda
+- Telas Admin N2-N9: intocadas
+
+---
+
 ## 2026-05-15 — Dashboard P1 do Professor com dado real + seed da rede
 
 - **Seed expandido** `src/lib/db/seed-network.ts`: cria users de Ricardo/Cláudia/Bruno, `memberships` por papel (Ricardo escopado em `class-demo-7a`), 12 alunos do 7º A (João identificado e linkado ao user `u-joao`), 9 habilidades BNCC, e `student_proficiency` por aluno×habilidade com score jitter realista.

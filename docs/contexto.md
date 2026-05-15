@@ -21,14 +21,19 @@
 - **Tenants do DB**: `getCurrentTenant()` lê do Postgres com seed idempotente das 3 prefeituras. Fallback in-code se não houver `DATABASE_URL`. White-label dinâmico funciona (`?tenant=pousoalegre` muda cores/nome do tutor).
 - **Seed da rede (Alfenas 7º A)**: 3 demo non-students (Ricardo prof, Cláudia sec, Bruno admin) + memberships, 12 alunos no 7º A (João linkado ao user), 9 habilidades BNCC, proficiência por aluno×habilidade.
 - **Dashboard P1 do Professor real**: KPIs (engajados na semana, em risco por proficiência <0.45, total na turma) e destaques (top 3 por avg proficiency) vêm do DB. Alertas, próximas aulas e ferramentas LLM ainda mockados.
+- **P5 Dashboard da Turma real**: heatmap students × habilidades BNCC + lista ordenada por proficiência + KPIs reais com empty states.
+- **S1 Dashboard da Secretaria real**: KPIs da rede inteira (total alunos, engajados 7d, profs/turmas/escolas, em risco, proficiência média) vêm do DB. IDEB e indicadores Nexus em baixo ainda mockados (gov data que não temos).
+- **P2 Copiloto LLM**: `/professor/copiloto` gera plano de aula via streaming (Claude Haiku 4.5 via OpenRouter, fallback mock). Form (disciplina/série/tema/duração) → SSE → Markdown render com cursor blinking. Sem persistência ainda.
 
 ## O que está mockado / não funcional ainda
 
 - Contagens (`students`, `teachers`, `schools`) do Tenant ainda vêm do in-code overlay — DB não tem agregados
 - RLS escrita no SQL mas conexão atual bypassa (queries rodam como owner; políticas existem mas não enforçam)
-- P2 (copiloto plano de aula), P3 (correção redação), P4 (gerar prova): só telas, sem LLM real plugado
-- P5 (dashboard turma), P6 (perfil aluno), P7 (diário), P8 (biblioteca): mockados
-- Telas Secretaria S1-S9 e Admin N2-N9: mockadas
+- P3 (correção redação), P4 (gerar prova): só telas, sem LLM real plugado
+- P6 (perfil aluno), P7 (diário), P8 (biblioteca): mockados
+- Planos de aula gerados pelo Copiloto ainda não persistem em DB
+- Telas Secretaria S2-S9 e Admin N2-N9: mockadas
+- IDEB gráfico e Indicadores Nexus na S1 seguem com dados do mock
 - WhatsApp, OCR, áudio, PDF, RAG: nada começado
 - `audit_log`, `consent_log`: schema existe, sem writes
 - Busca/filtros do histórico A3 são UI estática (não filtram nada ainda)

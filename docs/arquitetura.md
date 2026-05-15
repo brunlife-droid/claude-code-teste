@@ -84,12 +84,25 @@ docs/                 # ROADMAP, contexto, arquitetura, histórico
 `src/middleware.ts` injeta dois headers em toda request: `x-tenant-id` (tenant resolvido) e `x-pathname` (path original) — Server Components leem via `headers()`.
 
 ### Queries por papel (Professor / Secretaria / Admin)
-Pra evitar Server Components fazerem Drizzle direto, cada área terá um módulo de queries:
-- `src/lib/teacher/queries.ts` (existe): `loadTeacherContext`, `loadDashboardKpis`, `loadTopStudents`, `scoreToProficiency`.
-- `src/lib/secretaria/queries.ts` (futuro).
+Pra evitar Server Components fazerem Drizzle direto, cada área tem um módulo de queries:
+- `src/lib/teacher/queries.ts`: `loadTeacherContext`, `loadDashboardKpis`, `loadTopStudents`, `loadClassHeatmap`, `loadClassRoster`, `scoreToProficiency`.
+- `src/lib/secretaria/queries.ts`: `loadNetworkKpis`, `loadSchoolsHealth`.
 - `src/lib/admin/queries.ts` (futuro).
 
 Todas as queries seguem o mesmo contrato: graceful (sem DATABASE_URL → retorno vazio), `ensureNetworkSeeded()` chamado no entry point pra garantir dado demo.
+
+### Capabilities LLM ativas
+Cada capability tem rota (`src/lib/llm/routes.ts`) e prompt versionado (`src/lib/llm/prompts/`). System prompt injetado pelo `gateway.ts` quando o capability tem template — chamadores não precisam montar mensagem de sistema.
+
+| Capability | Modelo primário | Prompt | API route |
+| --- | --- | --- | --- |
+| `chat_student` | claude-haiku-4-5 | `student-tutor.ts` v4.2 | `/api/chat` |
+| `plan_generation` | claude-haiku-4-5 | `lesson-plan.ts` v1.0 | `/api/lesson-plan` |
+| `essay_correction` | gpt-4o-mini | (pendente) | (pendente) |
+| `bncc_classification` | claude-haiku-4-5 | (pendente) | (pendente) |
+| `sre_classification` | claude-haiku-4-5 | (pendente) | (pendente) |
+
+Convenção pra nova capability: 1) adicionar rota em `routes.ts`, 2) criar prompt versionado em `prompts/`, 3) extender `injectSystemPrompt` no gateway, 4) criar route handler `/api/<capability>` que valida sessão e papel e usa `stream()` do gateway.
 
 ## Convenções de código
 
