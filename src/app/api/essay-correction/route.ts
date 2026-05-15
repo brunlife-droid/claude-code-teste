@@ -1,0 +1,116 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { stream } from "@/lib/llm";
+import { auth } from "@/lib/auth";
+import { getCurrentTenant } from "@/lib/tenants/server";
+
+/**
+ * POST /api/essay-correction
+ *
+ * Body: { studentName, topic, essay }
+ *
+ * Stream SSE com chunks { type: "text" | "done" | "error" }.
+ * Capability `essay_correction` (GPT-4o-mini via OpenRouter, fallback
+ * para claude-haiku-4-5 via routes.ts).
+ *
+ * Restrito a professor/coordenador/diretor/orientador.
+ */
+
+export const runtime = "nodejs";
+
+interface EssayRequest {
+  studentName?: string;
+  topic?: string;
+  essay?: string;
+}
+
+const TEACHER_ROLES = new Set([
+  "professor",
+  "coordenador",
+  "diretor",
+  "orientador",
+]);
+
+const MAX_ESSAY_LENGTH = 8000;
+
+export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!TEACHER_ROLES.has(session.user.role)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  const tenant = await getCurrentTenant();
+  const body = (await request.json()) as EssayRequest;
+
+  const studentName = (body.studentName ?? "").trim() || "Aluno(a)";
+  const topic = (body.topic ?? "").trim() || "(tema não informado)";
+  const essay = (body.essay ?? "").trim();
+
+  if (!essay) {
+    return NextResponse.json(
+      { error: "essay (texto da redação) é obrigatório" },
+      { status: 400 },
+    );
+  }
+  if (essay.length > MAX_ESSAY_LENGTH) {
+    return NextResponse.json(
+      {
+        error: `texto da redação excede ${MAX_ESSAY_LENGTH} caracteres (recebido ${essay.length})`,
+      },
+      { status: 400 },
+    );
+  }
+
+  const userMessage = [
+    `Analise a redação abaixo nas 5 competências ENEM. Use exatamente o formato definido no prompt do sistema.`,
+    ``,
+    `Aluno: ${studentName}`,
+    `Tema: ${topic}`,
+    ``,
+    `--- início da redação ---`,
+    essay,
+    `--- fim da redação ---`,
+  ].join("\n");
+
+  const encoder = new TextEncoder();
+  const sseStream = new ReadableStream({
+    async start(controller) {
+      const send = (obj: unknown) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+      };
+      try {
+        for await (const chunk of stream({
+          capability: "essay_correction",
+          messages: [{ role: "user", content: userMessage }],
+          tenantId: tenant.id,
+          systemContext: {
+            prefeitura: tenant.short,
+            tenant_uf: tenant.uf,
+            student_name: studentName,
+            essay_topic: topic,
+          },
+        })) {
+          send(chunk);
+          if (chunk.type === "done" || chunk.type === "error") break;
+        }
+      } catch (err) {
+        send({
+          type: "error",
+          error: err instanceof Error ? err.message : String(err),
+        });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(sseStream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
+}

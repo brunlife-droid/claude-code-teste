@@ -20,6 +20,7 @@ import type {
 import { routeFor } from "./routes";
 import { STUDENT_TUTOR_PROMPT, renderPrompt } from "./prompts/student-tutor";
 import { LESSON_PLAN_PROMPT } from "./prompts/lesson-plan";
+import { ESSAY_CORRECTION_PROMPT } from "./prompts/essay-correction";
 import { mockComplete, mockStream } from "./providers/mock";
 import { openrouterComplete, openrouterStream } from "./providers/openrouter";
 
@@ -49,6 +50,14 @@ function injectSystemPrompt(
     rendered = renderPrompt(LESSON_PLAN_PROMPT.content, {
       prefeitura: "Alfenas",
       tenant_uf: "MG",
+      ...req.systemContext,
+    });
+  } else if (req.capability === "essay_correction") {
+    rendered = renderPrompt(ESSAY_CORRECTION_PROMPT.content, {
+      prefeitura: "Alfenas",
+      tenant_uf: "MG",
+      student_name: "(aluno)",
+      essay_topic: "(tema não informado)",
       ...req.systemContext,
     });
   }
