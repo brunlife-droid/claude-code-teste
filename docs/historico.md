@@ -6,6 +6,37 @@
 
 ---
 
+## 2026-05-16 — Produção validada para fluxos LLM principais
+
+Validação final na produção (`claude-code-teste.vercel.app`) depois do deploy da correção de SSE:
+
+- `/api/chat` autenticado como aluno respondeu `200 OK` com linhas `data: ...` e modelo `anthropic/claude-haiku-4-5`.
+- `/api/lesson-plan` autenticado como professor respondeu `200 OK` e gerou um plano completo de frações equivalentes.
+- `/api/essay-correction` autenticado como professor respondeu `200 OK` e gerou devolutiva ENEM via `openai/gpt-4o-mini`.
+- O falso `500` restante era artefato do payload montado pelo PowerShell; enviando JSON por arquivo com `--data-binary @...` a rota respondeu corretamente.
+- Removidos os desvios diagnósticos temporários (`topic: "__ping"`, `topic: "__json"`) e a rota `/api/sse-health` antes de deixar a produção para teste do Bruno.
+
+Consequência: Bruno já pode testar a aplicação em produção nos fluxos principais de login, chat do aluno, copiloto do professor e correção de redação. Upload de material ainda depende do Vercel Blob (`BLOB_READ_WRITE_TOKEN`).
+
+---
+
+## 2026-05-16 — Corrige SSE em produção para chat/copiloto/correção
+
+Teste real na produção (`claude-code-teste.vercel.app`) antes de Bruno validar o app:
+
+- Home e `/entrar` responderam `200 OK` na Vercel (`gru1`).
+- Login demo professor (`ricardo@alfenas.demo`) e aluno (`joao@alfenas.demo`) funcionaram; páginas `/professor`, `/aluno/chat` e `/aluno/historico` abriram autenticadas.
+- `/api/llm-health` autenticado respondeu com provider real (`openrouter`), modelo `anthropic/claude-haiku-4-5`, `sample: "pong"` e chaves `OPENROUTER_API_KEY`/`OPENAI_API_KEY` presentes.
+- As rotas SSE (`/api/chat`, `/api/lesson-plan`, `/api/essay-correction`) retornavam `500` quando entravam no caminho de streaming.
+
+**Correção aplicada:** removido o header hop-by-hop `Connection: keep-alive` das respostas e extraído `createBufferedSseResponse()` em `src/lib/http/sse.ts`. As rotas usam `complete()` do gateway e devolvem linhas `data: ...` bufferizadas (`text` + `done`) em vez de token streaming. A resposta sai como `text/plain` porque os clients leem o corpo por `fetch().body.getReader()` e não dependem de `text/event-stream`. É um fallback pragmático para produção: o front mantém o contrato de linhas SSE, e o caminho `complete()` já foi validado pelo `/api/llm-health`.
+
+**Impacto confirmado:** destrava chat do aluno, copiloto de plano de aula e correção de redação em produção sem alterar contratos de payload nem o formato SSE consumido pelos clients. O streaming token-by-token fica como melhoria técnica posterior.
+
+**Diagnóstico encerrado:** os endpoints temporários usados para separar falha de transporte HTTP, parsing de JSON e gateway LLM foram removidos depois da validação.
+
+---
+
 ## 2026-05-16 — Hooks de continuidade entre sessões (.claude/hooks/)
 
 Bruno levantou o problema real: cada nova conversa do Claude começa do zero, e mesmo com `CLAUDE.md` mandando ler os docs vivos, o Claude às vezes pula (eu mesmo pulei na sessão anterior, levou Bruno a perguntar "você está salvando isso?"). Solução: hooks programáticos no `.claude/settings.json` do projeto — executados pelo harness do Claude Code, não por mim, então não dependem de eu lembrar.

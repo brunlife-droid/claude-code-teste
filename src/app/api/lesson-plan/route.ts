@@ -1,14 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { stream } from "@/lib/llm";
+import { complete } from "@/lib/llm";
 import { auth } from "@/lib/auth";
 import { getCurrentTenant } from "@/lib/tenants/server";
+import { createBufferedSseResponse } from "@/lib/http/sse";
 
 /**
  * POST /api/lesson-plan
  *
  * Body: { subject, grade, topic, duration }
  *
- * Stream SSE com chunks { type: "text" | "done" | "error" }.
+ * Responde em linhas SSE com chunks { type: "text" | "done" | "error" }.
  * Gera plano de aula via capability `plan_generation` (Claude Haiku 4.5).
  * Restrito a professor/coordenador/diretor/orientador.
  */
@@ -59,41 +60,36 @@ export async function POST(request: NextRequest) {
     `Identifique a habilidade BNCC mais provável e siga a estrutura definida.`,
   ].join("\n");
 
-  const encoder = new TextEncoder();
-  const sseStream = new ReadableStream({
-    async start(controller) {
-      const send = (obj: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
-      };
-      try {
-        for await (const chunk of stream({
-          capability: "plan_generation",
-          messages: [{ role: "user", content: userMessage }],
-          tenantId: tenant.id,
-          systemContext: {
-            prefeitura: tenant.short,
-            tenant_uf: tenant.uf,
-          },
-        })) {
-          send(chunk);
-          if (chunk.type === "done" || chunk.type === "error") break;
-        }
-      } catch (err) {
-        send({
-          type: "error",
-          error: err instanceof Error ? err.message : String(err),
-        });
-      } finally {
-        controller.close();
-      }
-    },
-  });
+  try {
+    const result = await complete({
+      capability: "plan_generation",
+      messages: [{ role: "user", content: userMessage }],
+      tenantId: tenant.id,
+      systemContext: {
+        prefeitura: tenant.short,
+        tenant_uf: tenant.uf,
+      },
+    });
 
-  return new Response(sseStream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
-  });
+    return createBufferedSseResponse([
+      { type: "text", text: result.text },
+      {
+        type: "done",
+        meta: {
+          model: result.model,
+          provider: result.provider,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          latencyMs: result.latencyMs,
+        },
+      },
+    ]);
+  } catch (err) {
+    return createBufferedSseResponse([
+      {
+        type: "error",
+        error: err instanceof Error ? err.message : String(err),
+      },
+    ]);
+  }
 }

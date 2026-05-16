@@ -2,7 +2,7 @@
 
 > **Atualizar este arquivo sempre que o estado do projeto mudar.** Foto rápida do que está pronto, o que está em andamento e o que ainda não foi tocado.
 >
-> Última atualização: 2026-05-15 (tutora v4.3 + RAG + admin LLM macro + infra de produção parcial)
+> Última atualização: 2026-05-16 (produção validada para fluxos LLM principais)
 
 ---
 
@@ -20,6 +20,12 @@
 - **Pendente pra fechar produção**:
   - `BLOB_READ_WRITE_TOKEN` — depende de provisionar Vercel Blob no projeto (Storage → Create → Blob). Sem isso, upload de material PDF/DOCX vai falhar.
   - Validação end-to-end: subir material real, conversar com a tutora pra confirmar que ela usa o trecho RAG.
+- **Teste de produção em 2026-05-16**:
+  - Home e `/entrar` responderam `200 OK`.
+  - Login demo professor/aluno funcionou; `/professor`, `/aluno/chat` e `/aluno/historico` abriram autenticadas.
+  - `/api/llm-health` respondeu com OpenRouter real (`anthropic/claude-haiku-4-5`, `sample: "pong"`).
+  - Rotas SSE (`/api/chat`, `/api/lesson-plan`, `/api/essay-correction`) foram corrigidas e validadas em produção com respostas `200 OK`. Elas agora usam `complete()` + `createBufferedSseResponse()` e mantêm o contrato de linhas `data: ...` consumido pelo frontend.
+  - Bruno já pode testar login, chat do aluno, copiloto do professor e correção de redação em produção. Upload de material ainda depende do Vercel Blob (`BLOB_READ_WRITE_TOKEN`).
 
 ---
 
@@ -61,7 +67,6 @@
 - Reprocessamento manual de material que falhou (não tem botão "tentar de novo")
 - Mostrar "fonte" usada pela tutora abaixo da resposta no chat do aluno (transparência)
 - Busca/filtros do histórico A3 são UI estática (não filtram nada ainda)
-- `NEXTAUTH_SECRET` está em fallback inseguro (`"dev-only-secret-replace-me"`) — precisa setar na Vercel pra produção
 
 ## Próximos passos sugeridos (em discussão)
 

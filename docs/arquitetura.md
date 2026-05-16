@@ -115,13 +115,13 @@ Cada capability tem rota e prompt versionado. **Em runtime, o gateway lê a rota
 | `sre_classification` | claude-haiku-4-5 | (pendente) | (pendente) |
 | `embeddings_rag` | text-embedding-3-small (OpenAI direto) | (não usa prompt) | usado em `rag/retrieve.ts` e `rag/extract.ts` |
 
-Convenção pra nova capability: 1) adicionar rota em `routes.ts` (fallback hardcoded), 2) criar prompt versionado em `prompts/`, 3) atualizar `HARDCODED_PROMPTS` em `config.ts`, 4) criar route handler `/api/<capability>` que valida sessão e papel e usa `stream()` do gateway. A tela admin lista a nova capability automaticamente.
+Convenção pra nova capability: 1) adicionar rota em `routes.ts` (fallback hardcoded), 2) criar prompt versionado em `prompts/`, 3) atualizar `HARDCODED_PROMPTS` em `config.ts`, 4) criar route handler `/api/<capability>` que valida sessão e papel e usa `complete()` do gateway com resposta em linhas `data: ...`. A tela admin lista a nova capability automaticamente.
 
 ### RAG da turma (material do professor)
 - **Schema**: `documents` ganhou `class_id` + `kind` (`class_material` | `national_library`) + `status` (`pending`|`processing`|`ready`|`failed`); `chunks` tem `embedding vector(1536)` + índice HNSW (migration 0001).
 - **Upload**: client uploads do `@vercel/blob/client` — browser PUT direto na Blob com token assinado por `/api/material/upload`. Teto 50MB no token; arquivo grande nunca passa por função do servidor (bypassa limite de 4.5MB).
 - **Processamento**: `/api/material/process` baixa o blob, extrai texto (`pdf-parse`/`mammoth`/texto puro), chunka (1800c + 200c overlap), embedda em lotes de 32 via `text-embedding-3-small`, persiste em `chunks`. `maxDuration = 300`s. Idempotente por `documentId`.
-- **Retrieve em conversa**: `rag/retrieve.ts` embedda a última pergunta do aluno e busca top-3 chunks da turma do aluno por cosine distance (threshold 0.35). `rag/context.ts` formata os slots `{{foco_pedagogico}}` (de `class_focus_skills`) e `{{contexto_material}}` que o prompt v4.3 espera. `/api/chat` faz isso antes do `stream()`.
+- **Retrieve em conversa**: `rag/retrieve.ts` embedda a última pergunta do aluno e busca top-3 chunks da turma do aluno por cosine distance (threshold 0.35). `rag/context.ts` formata os slots `{{foco_pedagogico}}` (de `class_focus_skills`) e `{{contexto_material}}` que o prompt v4.3 espera. `/api/chat` faz isso antes de chamar `complete()` e devolver linhas `data: ...` para o frontend.
 - **Foco pedagógico**: `class_focus_skills` é a lista de habilidades BNCC marcadas pela profe em `/professor/turma` (multi-select). Vão pro prompt como prioridade — a tutora ainda responde sobre outros temas, só dá preferência a esses.
 
 ### Configuração macro LLM (admin)

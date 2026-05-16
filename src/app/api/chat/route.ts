@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { stream } from "@/lib/llm";
+import { complete } from "@/lib/llm";
 import { buildFocusBlock, buildMaterialBlock } from "@/lib/llm/rag/context";
 import { getCurrentTenant } from "@/lib/tenants/server";
 import { auth } from "@/lib/auth";
@@ -13,6 +13,7 @@ import {
   touchConversation,
   getConversationOwner,
 } from "@/lib/chat/persistence";
+import { createBufferedSseResponse } from "@/lib/http/sse";
 
 /**
  * POST /api/chat
@@ -22,7 +23,7 @@ import {
  *   conversationId?: string  // se ausente, cria nova conversation
  * }
  *
- * Stream SSE com chunks { type: "text" | "done" | "error" | "meta" }.
+ * Responde em linhas SSE com chunks { type: "text" | "done" | "error" | "meta" }.
  * O chunk "meta" carrega { conversationId } pra o cliente atualizar a URL.
  *
  * Persistência é graceful: sem DATABASE_URL, o chat continua streamando
@@ -87,104 +88,79 @@ export async function POST(request: NextRequest) {
 
   const persistedConversationId = conversationId;
 
-  const encoder = new TextEncoder();
-  const sseStream = new ReadableStream({
-    async start(controller) {
-      const send = (obj: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
-      };
+  const events: unknown[] = [];
+  if (persistedConversationId) {
+    events.push({ type: "meta", conversationId: persistedConversationId });
+  }
 
-      if (persistedConversationId) {
-        send({ type: "meta", conversationId: persistedConversationId });
-      }
+  try {
+    // RAG: foco pedagógico da turma + trechos relevantes do material.
+    // Resiliente — se algo falhar, slots vêm com placeholder neutro.
+    const classId = studentId
+      ? await resolveStudentClassId({ studentId })
+      : null;
 
-      let accumulated = "";
-      let assistantMeta: {
-        model?: string;
-        promptVersion?: string;
-        inputTokens?: number;
-        outputTokens?: number;
-        latencyMs?: number;
-      } = {};
-
-      // RAG: foco pedagógico da turma + trechos relevantes do material.
-      // Resiliente — se algo falhar, slots vêm com placeholder neutro.
-      const classId = studentId
-        ? await resolveStudentClassId({ studentId })
-        : null;
-
-      const lastUserText = lastUserMessage?.content ?? "";
-      const [focoBlock, materialBlock] = classId
-        ? await Promise.all([
-            buildFocusBlock({ tenantId: tenant.id, classId }),
-            buildMaterialBlock({
-              tenantId: tenant.id,
-              classId,
-              query: lastUserText,
-            }),
-          ])
-        : [
-            "(Nenhuma habilidade marcada como foco no momento.)",
-            "(Sem material relevante encontrado para essa pergunta. Responda com seu conhecimento amplo.)",
-          ];
-
-      try {
-        for await (const chunk of stream({
-          capability: "chat_student",
-          messages: body.messages,
-          tenantId: tenant.id,
-          systemContext: {
-            tutor_name: tenant.tutorName,
-            prefeitura: tenant.short,
-            foco_pedagogico: focoBlock,
-            contexto_material: materialBlock,
-          },
-        })) {
-          if (chunk.type === "text" && chunk.text) {
-            accumulated += chunk.text;
-          }
-          if (chunk.type === "done" && chunk.meta) {
-            assistantMeta = {
-              model: chunk.meta.model,
-              promptVersion: chunk.meta.promptVersion,
-              inputTokens: chunk.meta.inputTokens,
-              outputTokens: chunk.meta.outputTokens,
-              latencyMs: chunk.meta.latencyMs,
-            };
-          }
-          send(chunk);
-          if (chunk.type === "done" || chunk.type === "error") break;
-        }
-
-        if (persistedConversationId && accumulated) {
-          await appendMessage({
+    const lastUserText = lastUserMessage?.content ?? "";
+    const [focoBlock, materialBlock] = classId
+      ? await Promise.all([
+          buildFocusBlock({ tenantId: tenant.id, classId }),
+          buildMaterialBlock({
             tenantId: tenant.id,
-            conversationId: persistedConversationId,
-            role: "assistant",
-            content: accumulated,
-            ...assistantMeta,
-          });
-          await touchConversation({
-            tenantId: tenant.id,
-            conversationId: persistedConversationId,
-          });
-        }
-      } catch (err) {
-        send({
-          type: "error",
-          error: err instanceof Error ? err.message : String(err),
-        });
-      } finally {
-        controller.close();
-      }
-    },
-  });
+            classId,
+            query: lastUserText,
+          }),
+        ])
+      : [
+          "(Nenhuma habilidade marcada como foco no momento.)",
+          "(Sem material relevante encontrado para essa pergunta. Responda com seu conhecimento amplo.)",
+        ];
 
-  return new Response(sseStream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
-  });
+    const result = await complete({
+      capability: "chat_student",
+      messages: body.messages,
+      tenantId: tenant.id,
+      systemContext: {
+        tutor_name: tenant.tutorName,
+        prefeitura: tenant.short,
+        foco_pedagogico: focoBlock,
+        contexto_material: materialBlock,
+      },
+    });
+
+    events.push({ type: "text", text: result.text });
+    events.push({
+      type: "done",
+      meta: {
+        model: result.model,
+        provider: result.provider,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+        latencyMs: result.latencyMs,
+      },
+    });
+
+    if (persistedConversationId && result.text) {
+      await appendMessage({
+        tenantId: tenant.id,
+        conversationId: persistedConversationId,
+        role: "assistant",
+        content: result.text,
+        model: result.model,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+        latencyMs: result.latencyMs,
+      });
+      await touchConversation({
+        tenantId: tenant.id,
+        conversationId: persistedConversationId,
+      });
+    }
+  } catch (err) {
+    events.push({
+      type: "error",
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  return createBufferedSseResponse(events);
 }

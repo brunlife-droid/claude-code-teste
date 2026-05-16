@@ -1,14 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { stream } from "@/lib/llm";
+import { complete } from "@/lib/llm";
 import { auth } from "@/lib/auth";
 import { getCurrentTenant } from "@/lib/tenants/server";
+import { createBufferedSseResponse } from "@/lib/http/sse";
 
 /**
  * POST /api/essay-correction
  *
  * Body: { studentName, topic, essay }
  *
- * Stream SSE com chunks { type: "text" | "done" | "error" }.
+ * Responde em linhas SSE com chunks { type: "text" | "done" | "error" }.
  * Capability `essay_correction` (GPT-4o-mini via OpenRouter, fallback
  * para claude-haiku-4-5 via routes.ts).
  *
@@ -74,43 +75,38 @@ export async function POST(request: NextRequest) {
     `--- fim da redação ---`,
   ].join("\n");
 
-  const encoder = new TextEncoder();
-  const sseStream = new ReadableStream({
-    async start(controller) {
-      const send = (obj: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
-      };
-      try {
-        for await (const chunk of stream({
-          capability: "essay_correction",
-          messages: [{ role: "user", content: userMessage }],
-          tenantId: tenant.id,
-          systemContext: {
-            prefeitura: tenant.short,
-            tenant_uf: tenant.uf,
-            student_name: studentName,
-            essay_topic: topic,
-          },
-        })) {
-          send(chunk);
-          if (chunk.type === "done" || chunk.type === "error") break;
-        }
-      } catch (err) {
-        send({
-          type: "error",
-          error: err instanceof Error ? err.message : String(err),
-        });
-      } finally {
-        controller.close();
-      }
-    },
-  });
+  try {
+    const result = await complete({
+      capability: "essay_correction",
+      messages: [{ role: "user", content: userMessage }],
+      tenantId: tenant.id,
+      systemContext: {
+        prefeitura: tenant.short,
+        tenant_uf: tenant.uf,
+        student_name: studentName,
+        essay_topic: topic,
+      },
+    });
 
-  return new Response(sseStream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
-  });
+    return createBufferedSseResponse([
+      { type: "text", text: result.text },
+      {
+        type: "done",
+        meta: {
+          model: result.model,
+          provider: result.provider,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          latencyMs: result.latencyMs,
+        },
+      },
+    ]);
+  } catch (err) {
+    return createBufferedSseResponse([
+      {
+        type: "error",
+        error: err instanceof Error ? err.message : String(err),
+      },
+    ]);
+  }
 }
