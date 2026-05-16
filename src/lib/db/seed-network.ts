@@ -8,6 +8,7 @@
  * Se DATABASE_URL não estiver configurada, retorna silenciosamente.
  */
 
+import { sql } from "drizzle-orm";
 import { db } from "./client";
 import {
   classes,
@@ -99,7 +100,13 @@ export async function ensureNetworkSeeded(): Promise<void> {
           classId: u.classId,
         })),
       )
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: [memberships.userId, memberships.tenantId, memberships.role],
+        set: {
+          schoolId: sql`excluded.school_id`,
+          classId: sql`excluded.class_id`,
+        },
+      });
 
     await d
       .insert(students)
