@@ -10,11 +10,12 @@
  * outra tela ainda.
  */
 
-import { and, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   classes,
   conversations,
+  habilities,
   memberships,
   schools,
   studentProficiency,
@@ -441,6 +442,166 @@ export interface RosterEntry {
   lastActivity: Date | null;
 }
 
+export interface StudentSkillProfile {
+  code: string;
+  area: string;
+  description: string;
+  score: number;
+  level: "avancada" | "adequada" | "basica" | "insuficiente";
+  sampleSize: number;
+  lastUpdated: Date;
+}
+
+export interface StudentRecentConversation {
+  id: string;
+  title: string | null;
+  area: string | null;
+  channel: string;
+  updatedAt: Date;
+}
+
+export interface StudentProfile {
+  id: string;
+  fullName: string;
+  nickname: string | null;
+  birthDate: Date | null;
+  classId: string;
+  className: string;
+  grade: string;
+  schoolName: string;
+  bolsaFamilia: boolean;
+  a11yMode: string | null;
+  notes: string | null;
+  avgScore: number;
+  proficiency: "avancada" | "adequada" | "basica" | "insuficiente";
+  conversationCount: number;
+  lastActivity: Date | null;
+  skills: StudentSkillProfile[];
+  recentConversations: StudentRecentConversation[];
+}
+
+export async function loadStudentProfile(input: {
+  tenantId: string;
+  classIds: string[];
+  studentId?: string | null;
+}): Promise<StudentProfile | null> {
+  if (input.classIds.length === 0) return null;
+  if (!dbAvailable()) {
+    if (hasDemoClass(input)) return demoStudentProfile(input.studentId);
+    return null;
+  }
+
+  try {
+    await ensureNetworkSeeded();
+    const d = db();
+    const whereClause = input.studentId
+      ? and(
+          eq(students.tenantId, input.tenantId),
+          inArray(students.classId, input.classIds),
+          eq(students.id, input.studentId),
+        )
+      : and(
+          eq(students.tenantId, input.tenantId),
+          inArray(students.classId, input.classIds),
+        );
+
+    const base = (
+      await d
+        .select({
+          id: students.id,
+          fullName: students.fullName,
+          nickname: students.nickname,
+          birthDate: students.birthDate,
+          classId: students.classId,
+          className: classes.name,
+          grade: classes.grade,
+          schoolName: schools.name,
+          bolsaFamilia: students.bolsaFamilia,
+          a11yMode: students.a11yMode,
+          notes: students.notes,
+        })
+        .from(students)
+        .innerJoin(classes, eq(classes.id, students.classId))
+        .innerJoin(schools, eq(schools.id, students.schoolId))
+        .where(whereClause)
+        .orderBy(asc(students.fullName))
+        .limit(1)
+    )[0];
+
+    if (!base) {
+      if (hasDemoClass(input)) return demoStudentProfile(input.studentId);
+      return null;
+    }
+
+    const skillRows = await d
+      .select({
+        code: studentProficiency.habilityCode,
+        area: habilities.area,
+        description: habilities.description,
+        score: studentProficiency.score,
+        level: studentProficiency.level,
+        sampleSize: studentProficiency.sampleSize,
+        lastUpdated: studentProficiency.lastUpdated,
+      })
+      .from(studentProficiency)
+      .innerJoin(habilities, eq(habilities.code, studentProficiency.habilityCode))
+      .where(
+        and(
+          eq(studentProficiency.tenantId, input.tenantId),
+          eq(studentProficiency.studentId, base.id),
+        ),
+      )
+      .orderBy(asc(habilities.area), asc(studentProficiency.habilityCode));
+
+    const recentConversations = await d
+      .select({
+        id: conversations.id,
+        title: conversations.title,
+        area: conversations.area,
+        channel: conversations.channel,
+        updatedAt: conversations.updatedAt,
+      })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.tenantId, input.tenantId),
+          eq(conversations.studentId, base.id),
+        ),
+      )
+      .orderBy(desc(conversations.updatedAt))
+      .limit(5);
+
+    const [conversationTotal] = await d
+      .select({ n: count() })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.tenantId, input.tenantId),
+          eq(conversations.studentId, base.id),
+        ),
+      );
+
+    const avgScore =
+      skillRows.length === 0
+        ? 0
+        : skillRows.reduce((sum, row) => sum + row.score, 0) / skillRows.length;
+
+    return {
+      ...base,
+      avgScore,
+      proficiency: scoreToProficiency(avgScore),
+      conversationCount: conversationTotal?.n ?? recentConversations.length,
+      lastActivity: recentConversations[0]?.updatedAt ?? null,
+      skills: skillRows,
+      recentConversations,
+    };
+  } catch (err) {
+    console.error("[teacher/queries] loadStudentProfile failed:", err);
+    if (hasDemoClass(input)) return demoStudentProfile(input.studentId);
+    return null;
+  }
+}
+
 export async function loadClassRoster(input: {
   tenantId: string;
   classId: string;
@@ -581,6 +742,66 @@ function demoClassRoster(): RosterEntry[] {
       lastActivity: new Date(Date.now() - (i + 1) * 60 * 60 * 1000),
     };
   }).sort((a, b) => b.avgScore - a.avgScore);
+}
+
+function demoStudentProfile(studentId?: string | null): StudentProfile | null {
+  const chosen =
+    ALUNOS_7A.find((student) => demoStudentId(student.id) === studentId) ??
+    ALUNOS_7A[0];
+  if (!chosen) return null;
+
+  const index = ALUNOS_7A.findIndex((student) => student.id === chosen.id);
+  const skills = HABILIDADES_BNCC.map((hability, i) => {
+    const score = demoScoreFor(chosen.prof, i);
+    return {
+      code: hability.codigo,
+      area: hability.area,
+      description: hability.desc,
+      score,
+      level: scoreToProficiency(score),
+      sampleSize: 4 + (i % 3),
+      lastUpdated: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000),
+    };
+  });
+  const avgScore =
+    skills.reduce((sum, skill) => sum + skill.score, 0) / skills.length;
+
+  return {
+    id: demoStudentId(chosen.id),
+    fullName: chosen.nome,
+    nickname: chosen.nome.split(" ")[0] ?? null,
+    birthDate: null,
+    classId: DEMO_CLASS_ID,
+    className: "7º A",
+    grade: "7",
+    schoolName: "EM Padre Eustáquio",
+    bolsaFamilia: index % 3 === 0,
+    a11yMode: null,
+    notes: chosen.risco
+      ? "Acompanhar engajamento e retomar combinados de estudo."
+      : null,
+    avgScore,
+    proficiency: scoreToProficiency(avgScore),
+    conversationCount: chosen.acessos,
+    lastActivity: new Date(Date.now() - (index + 1) * 60 * 60 * 1000),
+    skills,
+    recentConversations: [
+      {
+        id: `demo-conv-${chosen.id}-1`,
+        title: "Dúvida sobre frações equivalentes",
+        area: "Matemática",
+        channel: "web",
+        updatedAt: new Date(Date.now() - (index + 1) * 60 * 60 * 1000),
+      },
+      {
+        id: `demo-conv-${chosen.id}-2`,
+        title: "Leitura de texto argumentativo",
+        area: "Língua Portuguesa",
+        channel: "web",
+        updatedAt: new Date(Date.now() - (index + 2) * 24 * 60 * 60 * 1000),
+      },
+    ],
+  };
 }
 
 function demoStudentId(id: string): string {

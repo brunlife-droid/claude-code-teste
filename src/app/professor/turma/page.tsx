@@ -289,7 +289,7 @@ export default async function TurmaPage() {
                       {formatLastActivity(r.lastActivity)}
                     </td>
                     <td className="border-border h-11 border-b px-4 align-middle">
-                      <Link href="/professor/alunos">
+                      <Link href={`/professor/alunos?id=${r.studentId}`}>
                         <Button variant="ghost" size="sm">
                           Perfil
                           <ArrowRight size={12} />

@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-16 — P6 perfil do aluno real
+
+- `/professor/alunos` deixou de usar `ALUNOS_7A[0]` fixo e passou a carregar o aluno pelo DB via `loadStudentProfile()`, respeitando as turmas vinculadas ao professor.
+- O perfil agora mostra dados pedagógicos reais: proficiência média, habilidades BNCC do aluno, menores scores, conversas recentes, último acesso e seletor de alunos da turma.
+- A lista de alunos em `/professor/turma` agora abre `/professor/alunos?id=<studentId>`, preservando o aluno escolhido.
+- Dados sensíveis sem fluxo consentido (CPF, telefone e responsável) não são inventados na UI; a tela exibe aviso LGPD e mantém o escopo pedagógico.
+
+Consequência: P6 vira parte navegável do fluxo real do professor e deixa de ser uma vitrine mockada de um único aluno.
+
+---
+
 ## 2026-05-16 — Busca real no histórico do aluno
 
 - `/aluno/historico` passou a ler `?q=` e `?area=` do App Router e filtrar conversas do DB por título/área.
