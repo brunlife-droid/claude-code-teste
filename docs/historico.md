@@ -11,8 +11,8 @@
 - Adicionada capability `exam_generation` no gateway LLM, com rota hardcoded, prompt versionado `src/lib/llm/prompts/exam-generation.ts` e visibilidade no admin de configuração macro LLM.
 - Criado endpoint `/api/exam-generation`, restrito a professor/coordenador/diretor/orientador, que gera prova com matriz BNCC, versões e gabarito comentado via `complete()` + linhas `data: ...`.
 - `/professor/provas` deixou de ser mock estático e virou ferramenta real com formulário de disciplina, série, temas, quantidade de questões, versões, duração e dificuldade. Resultado pode ser copiado ou baixado como `.md`.
-- Planos de aula, correções de redação e provas agora gravam um artefato best-effort em `audit_log` (`teacher_artifact.create`) com parâmetros, conteúdo, modelo e tokens. Sem `DATABASE_URL`, a geração continua funcionando sem persistir.
-- A persistência fica desacoplada da FK de usuário no `audit_log` e limita o conteúdo gravado, para preservar a geração mesmo quando a trilha best-effort falhar ou quando a tabela de artefatos dedicada ainda não existir.
+- Planos de aula, correções de redação e provas ganharam código de artefato best-effort em `audit_log` (`teacher_artifact.create`) com parâmetros, conteúdo limitado, modelo e tokens. Os writes ficam atrás de `TEACHER_ARTIFACTS_AUDIT_LOG=1` até a ponte ser validada ou substituída por tabela dedicada.
+- A persistência fica desacoplada da FK de usuário no `audit_log` e limita o conteúdo gravado, para preservar a geração mesmo quando a trilha best-effort estiver desativada ou falhar.
 - `/professor/biblioteca` ganhou seção "Gerados por mim", lendo os artefatos do professor no `audit_log` antes dos cards mockados da biblioteca da rede.
 - O gateway agora propaga `promptVersion` nas chamadas `complete()`, permitindo rastrear qual prompt gerou cada artefato.
 - `/api/llm-health` passou a aceitar `?capability=` para smoke test controlado das capabilities de professor em produção.
