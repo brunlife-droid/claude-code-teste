@@ -50,7 +50,7 @@
 - **P3 Correção de redação**: `/professor/correcao` analisa texto colado nas 5 competências ENEM (GPT-4o-mini via OpenRouter, fallback Haiku). Form com nome do aluno + tema + textarea + botão. Resultado grava artefato best-effort em `audit_log`.
 - **P4 Gerador de prova real**: `/professor/provas` chama `/api/exam-generation` via capability `exam_generation`, gerando prova com matriz BNCC, versões e gabarito comentado. Permite copiar ou baixar `.md`; grava artefato best-effort em `audit_log`.
 - **Tutora v4.3 socrática + RAG da turma**: prompt do `chat_student` reescrito com regras explícitas de não entregar resposta antes do aluno tentar. Slots `{{foco_pedagogico}}` (de `class_focus_skills`) e `{{contexto_material}}` (top-3 chunks via pgvector) injetados pelo `/api/chat`. Quando há material relevante, o chat do aluno mostra chips de fonte abaixo da resposta e persiste essa metadata na mensagem. Sem material relevante → tutora segue com base ampla.
-- **Material da turma no `/professor/turma`**: card com multi-select de habilidades BNCC pra foco + upload (PDF/DOCX/TXT/MD até 50MB) com status (pendente/processando/pronto/falhou) e remoção. Upload direto pro Vercel Blob via signed URL (`@vercel/blob/client`); `/api/material/process` extrai texto + chunks + embeddings (`text-embedding-3-small`).
+- **Material da turma no `/professor/turma`**: card com multi-select de habilidades BNCC pra foco + upload (PDF/DOCX/TXT/MD até 50MB) com status (pendente/processando/pronto/falhou), remoção e reprocessamento manual quando falha. Upload direto pro Vercel Blob via signed URL (`@vercel/blob/client`); `/api/material/process` extrai texto + chunks + embeddings (`text-embedding-3-small`).
 - **Config macro LLM no admin**: `/admin/configuracoes/llm` (papel `admin_nexus`) edita provider/modelo/temperature/maxTokens/fallback por capability e prompts versionados. Mudanças aplicam imediatamente (gateway lê DB com cache por request). Cai no fallback hardcoded sem DB ou sem registro.
 
 ## O que está mockado / não funcional ainda
@@ -65,7 +65,6 @@
 - WhatsApp, OCR, áudio: nada começado (PDF e RAG agora funcionais via /professor/turma)
 - `audit_log`: já recebe artefatos LLM do professor; ainda faltam writes para todas as ações sensíveis. `consent_log` segue sem fluxo implementado.
 - Override de config LLM por tenant (hoje só macro global)
-- Reprocessamento manual de material que falhou (não tem botão "tentar de novo")
 - Busca/filtros do histórico A3 são UI estática (não filtram nada ainda)
 
 ## Próximos passos sugeridos (em discussão)

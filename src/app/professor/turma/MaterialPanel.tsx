@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  RotateCcw,
   Trash2,
   Upload,
   FileText,
@@ -74,6 +75,7 @@ export function MaterialPanel({
   const [focusError, setFocusError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [processingIds, setProcessingIds] = useState<string[]>([]);
 
   const dirty =
     selectedCodes.slice().sort().join(",") !== selected.slice().sort().join(",");
@@ -163,6 +165,29 @@ export function MaterialPanel({
       await deleteClassMaterial({ documentId });
       router.refresh();
     });
+  }
+
+  async function retryProcessing(documentId: string) {
+    setUploadError(null);
+    setProcessingIds((prev) =>
+      prev.includes(documentId) ? prev : [...prev, documentId],
+    );
+    try {
+      const response = await fetch("/api/material/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!response.ok) {
+        setUploadError(result.error ?? "Não foi possível reprocessar agora.");
+      }
+      router.refresh();
+    } finally {
+      setProcessingIds((prev) => prev.filter((id) => id !== documentId));
+    }
   }
 
   return (
@@ -317,6 +342,21 @@ export function MaterialPanel({
                   )}
                 </div>
                 <StatusBadge status={m.status} />
+                {m.status === "failed" && (
+                  <button
+                    onClick={() => retryProcessing(m.id)}
+                    className="text-text-faint hover:text-primary flex items-center gap-1 rounded-md px-2 py-1 text-[11px] disabled:opacity-50"
+                    title="Tentar novamente"
+                    disabled={processingIds.includes(m.id)}
+                  >
+                    {processingIds.includes(m.id) ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                      <RotateCcw size={13} />
+                    )}
+                    Reprocessar
+                  </button>
+                )}
                 <button
                   onClick={() => handleDelete(m.id)}
                   className="text-text-faint hover:text-danger-fg p-1"

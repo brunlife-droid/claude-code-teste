@@ -23,6 +23,7 @@ import { extractText } from "@/lib/llm/rag/extract";
 import { chunkText } from "@/lib/llm/rag/chunk";
 import { embedBatch } from "@/lib/llm/providers/openai-embeddings";
 import { auth } from "@/lib/auth";
+import { getCurrentTenant } from "@/lib/tenants/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
   // Mesmo assim, exigimos sessão de papel pedagógico quando vem do browser
   // (header User-Agent indica navegador). Webhook pula auth.
   const isBrowser = !!request.headers.get("cookie");
+  let browserTenantId: string | null = null;
   if (isBrowser) {
     const session = await auth();
     const role = session?.user?.role;
@@ -49,6 +51,7 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
+    browserTenantId = (await getCurrentTenant()).id;
   }
 
   if (!process.env.DATABASE_URL) {
@@ -71,6 +74,9 @@ export async function POST(request: NextRequest) {
       .limit(1)
   )[0];
   if (!doc) {
+    return NextResponse.json({ error: "document not found" }, { status: 404 });
+  }
+  if (browserTenantId && doc.tenantId !== browserTenantId) {
     return NextResponse.json({ error: "document not found" }, { status: 404 });
   }
   if (doc.status === "ready") {

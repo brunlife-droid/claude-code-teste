@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-05-16 — Reprocessamento manual de material
+
+- O painel `/professor/turma` ganhou ação "Reprocessar" para materiais com status `failed`, reaproveitando `/api/material/process`.
+- A rota de processamento agora valida o tenant do documento quando chamada pelo navegador autenticado, evitando reprocessamento cruzado entre redes por `documentId`.
+- A UI mostra estado de carregamento por material e reapresenta o erro controlado se a nova tentativa falhar.
+
+Consequência: a professora não precisa remover e subir o mesmo arquivo de novo quando extração/embedding falhar; também fechamos uma barreira multi-tenant no endpoint.
+
+---
+
 ## 2026-05-16 — Fontes RAG visíveis no chat do aluno
 
 - `/api/chat` passou a montar o contexto de material como `block + sources`: o mesmo trecho usado no prompt agora também vira metadata para a interface.
