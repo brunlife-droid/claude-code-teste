@@ -25,8 +25,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { classes, documents } from "@/lib/db/schema";
+import { classes, documents, schools } from "@/lib/db/schema";
 import { getCurrentTenant } from "@/lib/tenants/server";
+
+const DEMO_TENANT_ID = "alfenas";
+const DEMO_SCHOOL_ID = "school-demo-alfenas";
+const DEMO_CLASS_ID = "class-demo-7a";
 
 const ALLOWED_MIME = [
   "application/pdf",
@@ -67,6 +71,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
         // Confirma que a turma pertence ao tenant antes de emitir token.
         if (process.env.DATABASE_URL) {
+          await ensureDemoClassScope(classId, tenantId);
           const cls = await db()
             .select({ id: classes.id, tenantId: classes.tenantId })
             .from(classes)
@@ -131,6 +136,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 400 },
     );
   }
+}
+
+async function ensureDemoClassScope(classId: string, tenantId: string) {
+  if (classId !== DEMO_CLASS_ID || tenantId !== DEMO_TENANT_ID) return;
+
+  await db()
+    .insert(schools)
+    .values({
+      id: DEMO_SCHOOL_ID,
+      tenantId: DEMO_TENANT_ID,
+      name: "EM Padre Eustáquio",
+    })
+    .onConflictDoNothing();
+
+  await db()
+    .insert(classes)
+    .values({
+      id: DEMO_CLASS_ID,
+      tenantId: DEMO_TENANT_ID,
+      schoolId: DEMO_SCHOOL_ID,
+      name: "7º A",
+      grade: "7",
+      year: new Date().getFullYear(),
+    })
+    .onConflictDoNothing();
 }
 
 function pickType(contentType: string | undefined): string {

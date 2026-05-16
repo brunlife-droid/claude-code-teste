@@ -21,12 +21,17 @@ import {
   classFocusSkills,
   documents,
   habilities,
+  schools,
   users,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentTenant } from "@/lib/tenants/server";
 import { HABILIDADES_BNCC } from "@/lib/mocks";
 import type { NexusSessionUser } from "@/lib/auth/types";
+
+const DEMO_TENANT_ID = "alfenas";
+const DEMO_SCHOOL_ID = "school-demo-alfenas";
+const DEMO_CLASS_ID = "class-demo-7a";
 
 async function requirePedagogicalSession() {
   const session = await auth();
@@ -65,6 +70,7 @@ export async function setClassFocus(input: {
   if (!process.env.DATABASE_URL) return { ok: true, applied: 0 };
 
   try {
+    await ensureDemoClassScope(input.classId, tenant.id);
     await assertClassInTenant(input.classId, tenant.id);
     await ensureActionUser(user);
 
@@ -219,6 +225,31 @@ async function ensureActionUser(user: NexusSessionUser) {
       email: user.email ?? null,
       name: user.name ?? user.email ?? user.id,
       image: user.image ?? null,
+    })
+    .onConflictDoNothing();
+}
+
+async function ensureDemoClassScope(classId: string, tenantId: string) {
+  if (classId !== DEMO_CLASS_ID || tenantId !== DEMO_TENANT_ID) return;
+
+  await db()
+    .insert(schools)
+    .values({
+      id: DEMO_SCHOOL_ID,
+      tenantId: DEMO_TENANT_ID,
+      name: "EM Padre Eustáquio",
+    })
+    .onConflictDoNothing();
+
+  await db()
+    .insert(classes)
+    .values({
+      id: DEMO_CLASS_ID,
+      tenantId: DEMO_TENANT_ID,
+      schoolId: DEMO_SCHOOL_ID,
+      name: "7º A",
+      grade: "7",
+      year: new Date().getFullYear(),
     })
     .onConflictDoNothing();
 }
