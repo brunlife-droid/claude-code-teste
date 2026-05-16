@@ -6,7 +6,18 @@ import { requireRole } from "@/lib/auth/session";
 import { resolveStudentId } from "@/lib/db/student-resolver";
 import { listConversations, type ConversationSummary } from "@/lib/chat/persistence";
 
-const FILTERS = ["Tudo", "Matemática", "Português", "Ciências", "História", "Geografia"];
+const FILTERS = [
+  "Tudo",
+  "Matemática",
+  "Português",
+  "Ciências",
+  "História",
+  "Geografia",
+];
+
+interface PageProps {
+  searchParams: Promise<{ q?: string; area?: string }>;
+}
 
 interface BucketItem {
   id: string;
@@ -57,6 +68,37 @@ function formatHora(updatedAt: Date, today: Date): string {
   });
 }
 
+function normalize(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function filterConversations(
+  rows: ConversationSummary[],
+  input: { query: string; area: string },
+): ConversationSummary[] {
+  const query = normalize(input.query);
+  const area = normalize(input.area);
+  return rows.filter((row) => {
+    const rowArea = row.area ?? "Conversa";
+    const text = normalize(`${row.title ?? ""} ${rowArea}`);
+    const matchesQuery = !query || text.includes(query);
+    const matchesArea = !area || normalize(rowArea) === area;
+    return matchesQuery && matchesArea;
+  });
+}
+
+function historyHref(input: { query: string; area: string }): string {
+  const params = new URLSearchParams();
+  if (input.query) params.set("q", input.query);
+  if (input.area) params.set("area", input.area);
+  const search = params.toString();
+  return search ? `/aluno/historico?${search}` : "/aluno/historico";
+}
+
 const BUCKET_ORDER = ["Hoje", "Ontem", "Esta semana", "Este mês", "Anteriores"];
 
 function groupConversations(rows: ConversationSummary[]): Bucket[] {
@@ -79,9 +121,12 @@ function groupConversations(rows: ConversationSummary[]): Bucket[] {
   }));
 }
 
-export default async function HistoricoPage() {
+export default async function HistoricoPage({ searchParams }: PageProps) {
   const user = await requireRole("aluno", "responsavel");
   const tenant = await getCurrentTenant();
+  const params = await searchParams;
+  const query = (params.q ?? "").trim();
+  const activeArea = params.area === "Tudo" ? "" : (params.area ?? "").trim();
   const studentId = await resolveStudentId({
     userId: user.id,
     tenantId: tenant.id,
@@ -89,7 +134,12 @@ export default async function HistoricoPage() {
   const rows = studentId
     ? await listConversations({ tenantId: tenant.id, studentId })
     : [];
-  const buckets = groupConversations(rows);
+  const filteredRows = filterConversations(rows, {
+    query,
+    area: activeArea,
+  });
+  const buckets = groupConversations(filteredRows);
+  const hasActiveFilter = query.length > 0 || activeArea.length > 0;
 
   return (
     <div className="scroll-thin h-full overflow-y-auto">
@@ -102,39 +152,63 @@ export default async function HistoricoPage() {
           </p>
         </header>
 
-        <div className="relative mt-6">
+        <form className="relative mt-6" action="/aluno/historico">
           <Search
             size={16}
             className="text-text-faint absolute top-1/2 left-4 -translate-y-1/2"
           />
+          {activeArea && <input type="hidden" name="area" value={activeArea} />}
           <input
+            name="q"
+            defaultValue={query}
             className="bg-surface border-border-strong placeholder:text-text-faint focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-soft)] h-12 w-full rounded-xl border pr-4 pl-11 text-[15px] outline-none transition-all"
-            placeholder="Buscar tema, palavra-chave…"
+            placeholder="Buscar tema, palavra-chave..."
           />
-        </div>
+        </form>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {FILTERS.map((f, i) => (
-            <Chip
-              key={f}
-              className="cursor-pointer"
-              style={
-                i === 0
-                  ? {
-                      background: tenant.primarySoft,
-                      color: tenant.primary,
-                      borderColor: "transparent",
-                    }
-                  : undefined
-              }
+          {FILTERS.map((f) => {
+            const value = f === "Tudo" ? "" : f;
+            const active = value === activeArea;
+            return (
+              <Link
+                key={f}
+                href={historyHref({ query, area: value })}
+                aria-current={active ? "page" : undefined}
+              >
+                <Chip
+                  className="cursor-pointer"
+                  style={
+                    active
+                      ? {
+                          background: tenant.primarySoft,
+                          color: tenant.primary,
+                          borderColor: "transparent",
+                        }
+                      : undefined
+                  }
+                >
+                  {f}
+                </Chip>
+              </Link>
+            );
+          })}
+          {hasActiveFilter && (
+            <Link
+              href="/aluno/historico"
+              className="text-text-faint hover:text-text-muted inline-flex items-center px-2 text-xs"
             >
-              {f}
-            </Chip>
-          ))}
+              Limpar filtros
+            </Link>
+          )}
         </div>
 
         {buckets.length === 0 ? (
-          <EmptyState tenantPrimary={tenant.primary} tenantSoft={tenant.primarySoft} />
+          <EmptyState
+            filtered={hasActiveFilter}
+            tenantPrimary={tenant.primary}
+            tenantSoft={tenant.primarySoft}
+          />
         ) : (
           <div className="mt-8 flex flex-col gap-8">
             {buckets.map((g) => (
@@ -178,12 +252,23 @@ export default async function HistoricoPage() {
 }
 
 function EmptyState({
+  filtered,
   tenantPrimary,
   tenantSoft,
 }: {
+  filtered: boolean;
   tenantPrimary: string;
   tenantSoft: string;
 }) {
+  const title = filtered
+    ? "Nenhuma conversa encontrada"
+    : "Você ainda não conversou com a sua tutora";
+  const description = filtered
+    ? "Tente limpar os filtros ou buscar por outra palavra-chave."
+    : "Quando você começar a tirar dúvida pelo chat, suas conversas aparecem aqui agrupadas por dia.";
+  const href = filtered ? "/aluno/historico" : "/aluno/chat";
+  const cta = filtered ? "Limpar filtros" : "Começar a estudar";
+
   return (
     <div className="border-border mt-10 flex flex-col items-center gap-3 rounded-2xl border border-dashed py-16 text-center">
       <div
@@ -192,19 +277,14 @@ function EmptyState({
       >
         <MessageSquare size={20} />
       </div>
-      <div className="text-text mt-1 text-[15px] font-medium">
-        Você ainda não conversou com a sua tutora
-      </div>
-      <p className="text-text-muted max-w-sm text-[13.5px]">
-        Quando você começar a tirar dúvida pelo chat, suas conversas aparecem
-        aqui — agrupadas por dia.
-      </p>
+      <div className="text-text mt-1 text-[15px] font-medium">{title}</div>
+      <p className="text-text-muted max-w-sm text-[13.5px]">{description}</p>
       <Link
-        href="/aluno/chat"
+        href={href}
         className="mt-2 rounded-lg px-4 py-2 text-[13.5px] font-medium transition-opacity hover:opacity-90"
         style={{ background: tenantPrimary, color: "white" }}
       >
-        Começar a estudar
+        {cta}
       </Link>
     </div>
   );

@@ -39,7 +39,7 @@
 - Scaffolding visual ainda contém mocks em várias telas de Aluno, Professor, Secretaria e Admin
 - Multi-tenant foundation (middleware + tabela `tenants` + tokens CSS por tenant)
 - Deploy Vercel forçado em `gru1` (São Paulo)
-- **Loop do Aluno completo**: chat A2 persiste no DB (conversations + messages), histórico A3 lê do Postgres com agrupamento por data, `?id=` reabre conversa antiga. Graceful sem `DATABASE_URL` (cai pra modo efêmero).
+- **Loop do Aluno completo**: chat A2 persiste no DB (conversations + messages), histórico A3 lê do Postgres com agrupamento por data e filtros reais por `?q=`/`?area=`, `?id=` reabre conversa antiga. Graceful sem `DATABASE_URL` (cai pra modo efêmero).
 - **Auth real enforced**: `/aluno`, `/professor`, `/secretaria`, `/admin` exigem sessão via `requireRole(...)` no layout. `/api/chat` retorna 401/403 sem sessão. Login redireciona por papel pra `getLayerHomePath(role)`. Ownership de conversation validada por `studentId` da sessão (não mais teatro). As áreas autenticadas têm botão "Sair" no shell, com logout via NextAuth e retorno para `/entrar`.
 - **Tenants do DB**: `getCurrentTenant()` lê do Postgres com seed idempotente das 3 prefeituras. Fallback in-code se não houver `DATABASE_URL`. White-label dinâmico funciona (`?tenant=pousoalegre` muda cores/nome do tutor).
 - **Seed da rede (Alfenas 7º A)**: usuários demo (incluindo João antes da FK de aluno), 3 demo non-students (Ricardo prof, Cláudia sec, Bruno admin) + memberships idempotentes com update explícito de escopo; `loadTeacherContext()` também repara/faz fallback do vínculo demo do Ricardo se o Neon estiver com row antiga. Há 12 alunos no 7º A (João linkado ao user), 9 habilidades BNCC e proficiência por aluno×habilidade.
@@ -65,7 +65,6 @@
 - WhatsApp, OCR, áudio: nada começado (PDF e RAG agora funcionais via /professor/turma)
 - `audit_log`: já recebe artefatos LLM do professor; ainda faltam writes para todas as ações sensíveis. `consent_log` segue sem fluxo implementado.
 - Override de config LLM por tenant (hoje só macro global)
-- Busca/filtros do histórico A3 são UI estática (não filtram nada ainda)
 
 ## Próximos passos sugeridos (em discussão)
 

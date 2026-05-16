@@ -83,6 +83,7 @@ O `CLAUDE.md` continua sendo a documentação humana do workflow; os hooks são 
 - IDs gerados com `crypto.randomUUID()` no app (nunca no DB). Convenção do schema (`text PK`).
 - A API `/api/chat` envia chunk SSE `{ type: "meta", conversationId }` no início do stream pra o cliente atualizar URL via `history.replaceState` — refresh preserva a conversa.
 - Quando o RAG encontra trechos de material da turma, `/api/chat` também envia `{ type: "sources", sources }`. A mensagem da tutora persiste essa metadata em `messages.attachments` com `kind="source"`, para a conversa reaberta continuar mostrando as fontes usadas.
+- `/aluno/historico` usa `listConversations()` e aplica filtros leves via search params (`q` e `area`) no Server Component, mantendo URL compartilhável sem estado client-side.
 - Ownership de conversation validado por `studentId` derivado da sessão antes de retomar (`?id=`) ou continuar via API (proteção contra IDOR).
 
 ### Auth + autorização

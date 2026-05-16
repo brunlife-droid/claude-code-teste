@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-05-16 — Busca real no histórico do aluno
+
+- `/aluno/historico` passou a ler `?q=` e `?area=` do App Router e filtrar conversas do DB por título/área.
+- A busca virou formulário GET, e os chips de disciplina agora são links com URL compartilhável.
+- Empty state diferencia "sem conversas ainda" de "nenhuma conversa encontrada" e oferece limpar filtros.
+
+Consequência: A3 deixa de ter controles decorativos; o aluno consegue achar conversas antigas sem depender só do agrupamento por data.
+
+---
+
 ## 2026-05-16 — Reprocessamento manual de material
 
 - O painel `/professor/turma` ganhou ação "Reprocessar" para materiais com status `failed`, reaproveitando `/api/material/process`.
