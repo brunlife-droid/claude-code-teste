@@ -19,6 +19,7 @@ export function CorrecaoClient() {
   const [feedback, setFeedback] = useState("");
   const [grading, setGrading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedArtifactId, setSavedArtifactId] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -26,6 +27,7 @@ export function CorrecaoClient() {
 
     setError(null);
     setFeedback("");
+    setSavedArtifactId(null);
     setGrading(true);
 
     try {
@@ -58,6 +60,8 @@ export function CorrecaoClient() {
             if (chunk.type === "text" && chunk.text) {
               accumulated += chunk.text;
               setFeedback(accumulated);
+            } else if (chunk.type === "done") {
+              setSavedArtifactId(chunk.meta?.artifactId ?? null);
             } else if (chunk.type === "error") {
               throw new Error(chunk.error ?? "stream error");
             }
@@ -153,10 +157,17 @@ export function CorrecaoClient() {
             </div>
           </div>
           {feedback && !grading && (
-            <Badge tone="primary">
-              <Sparkles size={10} />
-              gerado por IA
-            </Badge>
+            <div className="flex items-center gap-2">
+              {savedArtifactId && (
+                <Badge tone="success" title={savedArtifactId}>
+                  salvo
+                </Badge>
+              )}
+              <Badge tone="primary">
+                <Sparkles size={10} />
+                gerado por IA
+              </Badge>
+            </div>
           )}
         </div>
 

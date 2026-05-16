@@ -6,6 +6,19 @@
 
 ---
 
+## 2026-05-16 — P4 gerador de prova real + artefatos do professor
+
+- Adicionada capability `exam_generation` no gateway LLM, com rota hardcoded, prompt versionado `src/lib/llm/prompts/exam-generation.ts` e visibilidade no admin de configuração macro LLM.
+- Criado endpoint `/api/exam-generation`, restrito a professor/coordenador/diretor/orientador, que gera prova com matriz BNCC, versões e gabarito comentado via `complete()` + linhas `data: ...`.
+- `/professor/provas` deixou de ser mock estático e virou ferramenta real com formulário de disciplina, série, temas, quantidade de questões, versões, duração e dificuldade. Resultado pode ser copiado ou baixado como `.md`.
+- Planos de aula, correções de redação e provas agora gravam um artefato best-effort em `audit_log` (`teacher_artifact.create`) com parâmetros, conteúdo, modelo e tokens. Sem `DATABASE_URL`, a geração continua funcionando sem persistir.
+- `/professor/biblioteca` ganhou seção "Gerados por mim", lendo os artefatos do professor no `audit_log` antes dos cards mockados da biblioteca da rede.
+- O gateway agora propaga `promptVersion` nas chamadas `complete()`, permitindo rastrear qual prompt gerou cada artefato.
+
+Consequência: o professor já consegue gerar prova real em produção e os principais artefatos LLM deixam rastro reaproveitável sem exigir uma nova migration antes da demo. Uma tabela dedicada de artefatos ainda é recomendada quando a biblioteca evoluir para edição, compartilhamento e versionamento completo.
+
+---
+
 ## 2026-05-16 — Logout visível nas áreas autenticadas
 
 - Adicionado `LogoutButton` compartilhado em `src/components/shell/logout-button.tsx`, usando `signOut()` do NextAuth e redirecionando para `/entrar`.

@@ -30,6 +30,13 @@ export const ROUTES: CapabilityRoute[] = [
     promptVersion: "v1.0",
   },
   {
+    capability: "exam_generation",
+    provider: "openrouter",
+    model: "anthropic/claude-haiku-4-5",
+    promptVersion: "v1.0",
+    fallback: { provider: "openrouter", model: "google/gemini-2.5-flash" },
+  },
+  {
     capability: "essay_correction",
     provider: "openrouter",
     model: "openai/gpt-4o-mini",

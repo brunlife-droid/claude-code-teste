@@ -22,6 +22,9 @@ const RESPONSES: Record<string, string[]> = {
   plan_generation: [
     "**Frações equivalentes** · 7º ano · 50min · EF07MA04\n\n**Abertura · 10min**\nApresentar pizza dividida em 8 e outra em 4. Provocação: \"comer 2/4 é o mesmo que comer 4/8?\"\n\n**Investigação · 25min**\nDuplas com material concreto. Encontrar 3 pares equivalentes e justificar.\n\n**Sistematização · 10min**\nConstruir coletivamente a regra: multiplicar numerador e denominador pelo mesmo número.\n\n**Avaliação · 5min**\nTicket de saída: cada aluno escreve 1 fração equivalente a 3/4.",
   ],
+  exam_generation: [
+    "# Prova - Matemática - 7º ano\n\n## Orientações ao aluno\nLeia com atenção, apresente os cálculos quando necessário e marque apenas uma alternativa nas questões objetivas.\n\n## Versão A\n\n1. (EF07MA04 - fácil - múltipla escolha) Qual fração é equivalente a 3/4?\nA) 6/8\nB) 5/6\nC) 7/9\nD) 9/16\n\n2. (EF07MA04 - médio - discursiva) Explique, com desenho ou cálculo, por que 2/6 e 4/12 representam a mesma quantidade.\n\n3. (EF07MA12 - médio - múltipla escolha) Em uma turma de 30 alunos, 2/5 são meninas. Quantos são meninos?\nA) 12\nB) 15\nC) 18\nD) 20\n\n## Gabarito comentado\n1. A - multiplicou numerador e denominador por 2.\n2. Espera-se identificar equivalência por simplificação ou multiplicação.\n3. C - 2/5 de 30 = 12 meninas; 18 meninos.",
+  ],
   bncc_classification: [
     '{"code":"EF07MA04","confidence":0.94,"area":"Matemática"}',
   ],

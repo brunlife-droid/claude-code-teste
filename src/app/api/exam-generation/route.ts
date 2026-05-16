@@ -6,23 +6,26 @@ import { createBufferedSseResponse } from "@/lib/http/sse";
 import { recordTeacherArtifact } from "@/lib/teacher/artifacts";
 
 /**
- * POST /api/essay-correction
+ * POST /api/exam-generation
  *
- * Body: { studentName, topic, essay }
+ * Body: { subject, grade, topics, questionCount, versions, duration, difficulty }
  *
  * Responde em linhas SSE com chunks { type: "text" | "done" | "error" }.
- * Capability `essay_correction` (GPT-4o-mini via OpenRouter, fallback
- * para claude-haiku-4-5 via routes.ts).
- *
+ * Capability `exam_generation` (Claude Haiku 4.5 via OpenRouter).
  * Restrito a professor/coordenador/diretor/orientador.
  */
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
-interface EssayRequest {
-  studentName?: string;
-  topic?: string;
-  essay?: string;
+interface ExamRequest {
+  subject?: string;
+  grade?: string;
+  topics?: string;
+  questionCount?: number;
+  versions?: string;
+  duration?: string;
+  difficulty?: string;
 }
 
 const TEACHER_ROLES = new Set([
@@ -31,8 +34,6 @@ const TEACHER_ROLES = new Set([
   "diretor",
   "orientador",
 ]);
-
-const MAX_ESSAY_LENGTH = 8000;
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -44,56 +45,63 @@ export async function POST(request: NextRequest) {
   }
 
   const tenant = await getCurrentTenant();
-  const body = (await request.json()) as EssayRequest;
+  const body = (await request.json()) as ExamRequest;
 
-  const studentName = (body.studentName ?? "").trim() || "Aluno(a)";
-  const topic = (body.topic ?? "").trim() || "(tema não informado)";
-  const essay = (body.essay ?? "").trim();
+  const subject = (body.subject ?? "").trim();
+  const grade = (body.grade ?? "").trim();
+  const topics = (body.topics ?? "").trim();
+  const questionCount = normalizeQuestionCount(body.questionCount);
+  const versions = (body.versions ?? "A").trim() || "A";
+  const duration = (body.duration ?? "50 min").trim() || "50 min";
+  const difficulty = (body.difficulty ?? "3 fáceis, 5 médias, 2 difíceis").trim();
 
-  if (!essay) {
+  if (!subject || !grade || !topics) {
     return NextResponse.json(
-      { error: "essay (texto da redação) é obrigatório" },
-      { status: 400 },
-    );
-  }
-  if (essay.length > MAX_ESSAY_LENGTH) {
-    return NextResponse.json(
-      {
-        error: `texto da redação excede ${MAX_ESSAY_LENGTH} caracteres (recebido ${essay.length})`,
-      },
+      { error: "subject, grade e topics são obrigatórios" },
       { status: 400 },
     );
   }
 
   const userMessage = [
-    `Analise a redação abaixo nas 5 competências ENEM. Use exatamente o formato definido no prompt do sistema.`,
+    `Gere uma prova com os seguintes parâmetros:`,
     ``,
-    `Aluno: ${studentName}`,
-    `Tema: ${topic}`,
+    `- Disciplina: ${subject}`,
+    `- Série: ${grade}`,
+    `- Tema(s): ${topics}`,
+    `- Total de questões: ${questionCount}`,
+    `- Versões: ${versions}`,
+    `- Duração: ${duration}`,
+    `- Distribuição de dificuldade: ${difficulty}`,
     ``,
-    `--- início da redação ---`,
-    essay,
-    `--- fim da redação ---`,
+    `Inclua matriz BNCC, prova(s), gabarito comentado e critérios para questões discursivas.`,
   ].join("\n");
 
   try {
     const result = await complete({
-      capability: "essay_correction",
+      capability: "exam_generation",
       messages: [{ role: "user", content: userMessage }],
       tenantId: tenant.id,
+      temperature: 0.4,
+      maxTokens: 4500,
       systemContext: {
         prefeitura: tenant.short,
         tenant_uf: tenant.uf,
-        student_name: studentName,
-        essay_topic: topic,
       },
     });
     const artifactId = await recordTeacherArtifact({
       tenantId: tenant.id,
       actorUserId: session.user.id,
-      kind: "essay_correction",
-      title: `${studentName} · ${topic}`,
-      request: { studentName, topic, essayLength: essay.length },
+      kind: "exam",
+      title: `${subject} · ${topics}`,
+      request: {
+        subject,
+        grade,
+        topics,
+        questionCount,
+        versions,
+        duration,
+        difficulty,
+      },
       content: result.text,
       result,
     });
@@ -120,4 +128,10 @@ export async function POST(request: NextRequest) {
       },
     ]);
   }
+}
+
+function normalizeQuestionCount(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 10;
+  return Math.max(3, Math.min(30, Math.round(n)));
 }

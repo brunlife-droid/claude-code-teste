@@ -13,6 +13,7 @@
 export type Capability =
   | "chat_student"
   | "plan_generation"
+  | "exam_generation"
   | "essay_correction"
   | "bncc_classification"
   | "embeddings_rag"

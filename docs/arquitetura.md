@@ -2,7 +2,7 @@
 
 > **Atualizar sempre que uma decisão arquitetural mudar** — nova abstração, nova camada, novo provider, refator estrutural. Não duplicar o ROADMAP; aqui é o **estado real do código**, não o plano.
 >
-> Última atualização: 2026-05-15
+> Última atualização: 2026-05-16
 
 ---
 
@@ -67,7 +67,7 @@ O `CLAUDE.md` continua sendo a documentação humana do workflow; os hooks são 
 
 ### LLM gateway
 - Tudo passa por `src/lib/llm/gateway.ts`. Componentes nunca chamam OpenRouter direto.
-- Roteamento por **capability** (chat-student, plan-generation, essay-correction, embeddings), não por modelo direto. Permite trocar provider sem deploy.
+- Roteamento por **capability** (chat, plano, prova, correção, embeddings), não por modelo direto. Permite trocar provider sem deploy.
 - Observability (tokens, latência, custo por tenant) passa pelo gateway.
 
 ### White-label
@@ -111,6 +111,7 @@ Cada capability tem rota e prompt versionado. **Em runtime, o gateway lê a rota
 | --- | --- | --- | --- |
 | `chat_student` | claude-haiku-4-5 | `student-tutor.ts` v4.3 (socrático reforçado + slots RAG) | `/api/chat` |
 | `plan_generation` | claude-haiku-4-5 | `lesson-plan.ts` v1.0 | `/api/lesson-plan` |
+| `exam_generation` | claude-haiku-4-5 | `exam-generation.ts` v1.0 | `/api/exam-generation` |
 | `essay_correction` | gpt-4o-mini | `essay-correction.ts` v1.0 | `/api/essay-correction` |
 | `bncc_classification` | claude-haiku-4-5 | (pendente) | (pendente) |
 | `sre_classification` | claude-haiku-4-5 | (pendente) | (pendente) |
@@ -124,6 +125,11 @@ Convenção pra nova capability: 1) adicionar rota em `routes.ts` (fallback hard
 - **Processamento**: `/api/material/process` baixa o blob, extrai texto (`pdf-parse`/`mammoth`/texto puro), chunka (1800c + 200c overlap), embedda em lotes de 32 via `text-embedding-3-small`, persiste em `chunks`. `maxDuration = 300`s. Idempotente por `documentId`.
 - **Retrieve em conversa**: `rag/retrieve.ts` embedda a última pergunta do aluno e busca top-3 chunks da turma do aluno por cosine distance (threshold 0.35). `rag/context.ts` formata os slots `{{foco_pedagogico}}` (de `class_focus_skills`) e `{{contexto_material}}` que o prompt v4.3 espera. `/api/chat` faz isso antes de chamar `complete()` e devolver linhas `data: ...` para o frontend.
 - **Foco pedagógico**: `class_focus_skills` é a lista de habilidades BNCC marcadas pela profe em `/professor/turma` (multi-select). Vão pro prompt como prioridade — a tutora ainda responde sobre outros temas, só dá preferência a esses.
+
+### Artefatos do professor
+- Planos, correções de redação e provas gerados pelo LLM gravam uma trilha best-effort em `audit_log` com `action='teacher_artifact.create'`, `target_type='teacher_artifact'` e `metadata` contendo `kind`, `title`, parâmetros, conteúdo e metadados do modelo.
+- `src/lib/teacher/artifacts.ts` centraliza gravação e leitura desses artefatos. Sem `DATABASE_URL` ou com falha de DB, a geração segue funcionando e apenas não persiste.
+- `/professor/biblioteca` lê os últimos artefatos do usuário logado e mostra a seção "Gerados por mim". Isso é ponte de MVP; uma tabela dedicada continua sendo o caminho correto para edição, compartilhamento, busca e versionamento.
 
 ### Configuração macro LLM (admin)
 - **Tabelas**: `llm_routes` (PK = capability, uma rota ativa por capability) e `system_prompts` (versionado, índice único parcial garante 1 ativa por capability).

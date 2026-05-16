@@ -43,6 +43,10 @@ const DEFAULTS_BY_CAPABILITY: Record<string, Record<string, string>> = {
     prefeitura: "Alfenas",
     tenant_uf: "MG",
   },
+  exam_generation: {
+    prefeitura: "Alfenas",
+    tenant_uf: "MG",
+  },
   essay_correction: {
     prefeitura: "Alfenas",
     tenant_uf: "MG",
@@ -90,23 +94,27 @@ export async function complete(
   req: ChatCompletionRequest,
 ): Promise<ChatCompletionResponse> {
   const route = await loadRoute(req.capability);
-  const { req: enriched } = await injectSystemPrompt(req);
+  const { req: enriched, promptVersion } = await injectSystemPrompt(req);
   const withDefaults = withRouteDefaults(enriched, route);
 
   if (shouldUseMock(route.provider)) {
-    return mockComplete(withDefaults);
+    const result = await mockComplete(withDefaults);
+    return { ...result, promptVersion: promptVersion ?? result.promptVersion };
   }
 
   if (route.provider === "openrouter") {
     try {
-      return await openrouterComplete(withDefaults, route.model);
+      const result = await openrouterComplete(withDefaults, route.model);
+      return { ...result, promptVersion };
     } catch (err) {
       console.error("openrouter failed, falling back to mock", err);
-      return mockComplete(withDefaults);
+      const result = await mockComplete(withDefaults);
+      return { ...result, promptVersion: promptVersion ?? result.promptVersion };
     }
   }
 
-  return mockComplete(withDefaults);
+  const result = await mockComplete(withDefaults);
+  return { ...result, promptVersion: promptVersion ?? result.promptVersion };
 }
 
 export async function* stream(

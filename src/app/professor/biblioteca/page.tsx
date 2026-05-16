@@ -1,6 +1,12 @@
 import { Eye, Heart, Search, Upload } from "lucide-react";
 import { Badge, Button, Card, Chip } from "@/components/ui";
 import { PageHeader, PageBody } from "@/components/layout";
+import { requireRole } from "@/lib/auth/session";
+import { getCurrentTenant } from "@/lib/tenants/server";
+import {
+  artifactKindLabel,
+  loadTeacherArtifacts,
+} from "@/lib/teacher/artifacts";
 
 const PLANOS = [
   {
@@ -65,7 +71,20 @@ const PLANOS = [
   },
 ];
 
-export default function BibliotecaPage() {
+export default async function BibliotecaPage() {
+  const user = await requireRole(
+    "professor",
+    "coordenador",
+    "diretor",
+    "orientador",
+  );
+  const tenant = await getCurrentTenant();
+  const artifacts = await loadTeacherArtifacts({
+    tenantId: tenant.id,
+    actorUserId: user.id,
+    limit: 6,
+  });
+
   return (
     <>
       <PageHeader
@@ -81,6 +100,43 @@ export default function BibliotecaPage() {
         }
       />
       <PageBody>
+        {artifacts.length > 0 && (
+          <section className="flex flex-col gap-3">
+            <div>
+              <div className="text-sm font-semibold">Gerados por mim</div>
+              <div className="text-text-muted mt-0.5 text-xs">
+                Planos, correções e provas salvos automaticamente depois da geração.
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {artifacts.map((artifact) => (
+                <Card
+                  key={artifact.id}
+                  className="p-4 transition-colors hover:border-border-strong"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge tone={artifact.kind === "exam" ? "warning" : "primary"}>
+                      {artifactKindLabel(artifact.kind)}
+                    </Badge>
+                    <span className="text-text-faint text-[11px]">
+                      {formatDate(artifact.createdAt)}
+                    </span>
+                  </div>
+                  <h3 className="mt-3 line-clamp-2 text-[14px] font-semibold leading-snug">
+                    {artifact.title}
+                  </h3>
+                  <p className="text-text-muted mt-2 line-clamp-3 text-xs leading-relaxed">
+                    {artifact.contentPreview || "Conteúdo salvo no histórico."}
+                  </p>
+                  <div className="text-text-faint mt-3 truncate text-[11px]">
+                    {artifact.provider ?? "provider"} · {artifact.model ?? "modelo"}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Filtros */}
         <Card className="p-4">
           <div className="flex flex-wrap items-center gap-2">
@@ -142,4 +198,13 @@ export default function BibliotecaPage() {
       </PageBody>
     </>
   );
+}
+
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }

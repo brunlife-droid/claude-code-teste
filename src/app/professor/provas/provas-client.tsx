@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Copy, Download, Loader2, Sparkles } from "lucide-react";
 import { Badge, Button, Card } from "@/components/ui";
 
 const SUBJECTS = [
@@ -11,38 +11,45 @@ const SUBJECTS = [
   "História",
   "Geografia",
 ];
-const GRADES = [
-  "6º ano",
-  "7º ano",
-  "8º ano",
-  "9º ano",
-];
+const GRADES = ["6º ano", "7º ano", "8º ano", "9º ano"];
 const DURATIONS = ["30 min", "50 min", "1h 30min", "2h"];
+const VERSIONS = ["A", "A e B", "A, B e C"];
 
-export function CopilotoClient() {
+export function ProvasClient() {
   const [subject, setSubject] = useState("Matemática");
   const [grade, setGrade] = useState("7º ano");
-  const [topic, setTopic] = useState("Frações equivalentes");
+  const [topics, setTopics] = useState("Frações equivalentes e porcentagem simples");
+  const [questionCount, setQuestionCount] = useState(10);
+  const [versions, setVersions] = useState("A e B");
   const [duration, setDuration] = useState("50 min");
-  const [plan, setPlan] = useState("");
+  const [difficulty, setDifficulty] = useState("3 fáceis, 5 médias, 2 difíceis");
+  const [exam, setExam] = useState("");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedArtifactId, setSavedArtifactId] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (generating || !topic.trim()) return;
+    if (generating || !topics.trim()) return;
 
     setError(null);
-    setPlan("");
+    setExam("");
     setSavedArtifactId(null);
     setGenerating(true);
 
     try {
-      const response = await fetch("/api/lesson-plan", {
+      const response = await fetch("/api/exam-generation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, grade, topic, duration }),
+        body: JSON.stringify({
+          subject,
+          grade,
+          topics,
+          questionCount,
+          versions,
+          duration,
+          difficulty,
+        }),
       });
 
       if (!response.ok || !response.body) {
@@ -63,20 +70,14 @@ export function CopilotoClient() {
         buffer = lines.pop() ?? "";
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
-          try {
-            const chunk = JSON.parse(line.slice(6));
-            if (chunk.type === "text" && chunk.text) {
-              accumulated += chunk.text;
-              setPlan(accumulated);
-            } else if (chunk.type === "done") {
-              setSavedArtifactId(chunk.meta?.artifactId ?? null);
-            } else if (chunk.type === "error") {
-              throw new Error(chunk.error ?? "stream error");
-            }
-          } catch (err) {
-            if (err instanceof Error && err.message.includes("stream error")) {
-              throw err;
-            }
+          const chunk = JSON.parse(line.slice(6));
+          if (chunk.type === "text" && chunk.text) {
+            accumulated += chunk.text;
+            setExam(accumulated);
+          } else if (chunk.type === "done") {
+            setSavedArtifactId(chunk.meta?.artifactId ?? null);
+          } else if (chunk.type === "error") {
+            throw new Error(chunk.error ?? "stream error");
           }
         }
       }
@@ -87,13 +88,30 @@ export function CopilotoClient() {
     }
   }
 
+  async function copyExam() {
+    if (!exam) return;
+    await navigator.clipboard.writeText(exam);
+  }
+
+  function downloadExam() {
+    if (!exam) return;
+    const blob = new Blob([exam], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `prova-${subject.toLowerCase().replace(/\s+/g, "-")}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
-    <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+    <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
       <Card className="p-5">
-        <div className="text-sm font-semibold">Parâmetros</div>
+        <div className="text-sm font-semibold">Parâmetros da avaliação</div>
         <div className="text-text-muted mt-1 text-xs">
-          A IA identifica a habilidade BNCC automaticamente.
+          A IA monta matriz, questões, versões e gabarito comentado.
         </div>
+
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">
           <FormField label="Disciplina">
             <select
@@ -109,6 +127,7 @@ export function CopilotoClient() {
               ))}
             </select>
           </FormField>
+
           <FormField label="Série">
             <select
               value={grade}
@@ -123,16 +142,45 @@ export function CopilotoClient() {
               ))}
             </select>
           </FormField>
-          <FormField label="Tema">
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
+
+          <FormField label="Tema(s)">
+            <textarea
+              value={topics}
+              onChange={(e) => setTopics(e.target.value)}
               disabled={generating}
-              placeholder="Ex: Frações equivalentes"
-              className="bg-surface-2 border-border w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Ex: Frações equivalentes, porcentagem simples"
+              className="bg-surface-2 border-border min-h-20 w-full resize-y rounded-md border px-3 py-2 text-sm"
             />
           </FormField>
+
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Questões">
+              <input
+                type="number"
+                min={3}
+                max={30}
+                value={questionCount}
+                onChange={(e) => setQuestionCount(Number(e.target.value))}
+                disabled={generating}
+                className="bg-surface-2 border-border w-full rounded-md border px-3 py-2 text-sm"
+              />
+            </FormField>
+            <FormField label="Versões">
+              <select
+                value={versions}
+                onChange={(e) => setVersions(e.target.value)}
+                disabled={generating}
+                className="bg-surface-2 border-border w-full rounded-md border px-3 py-2 text-sm"
+              >
+                {VERSIONS.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+
           <FormField label="Duração">
             <select
               value={duration}
@@ -148,9 +196,19 @@ export function CopilotoClient() {
             </select>
           </FormField>
 
+          <FormField label="Dificuldade">
+            <input
+              type="text"
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+              disabled={generating}
+              className="bg-surface-2 border-border w-full rounded-md border px-3 py-2 text-sm"
+            />
+          </FormField>
+
           <Button
             type="submit"
-            disabled={generating || !topic.trim()}
+            disabled={generating || !topics.trim()}
             className="mt-2 w-full justify-center"
           >
             {generating ? (
@@ -158,9 +216,10 @@ export function CopilotoClient() {
             ) : (
               <Sparkles size={14} />
             )}
-            {generating ? "Gerando..." : plan ? "Regenerar" : "Gerar plano"}
+            {generating ? "Gerando..." : exam ? "Regenerar prova" : "Gerar prova"}
           </Button>
         </form>
+
         {error && (
           <div className="bg-danger-soft text-danger-fg mt-3 rounded-md p-3 text-xs">
             {error}
@@ -169,54 +228,55 @@ export function CopilotoClient() {
       </Card>
 
       <Card className="p-0">
-        <div className="border-border flex items-center justify-between border-b px-6 py-4">
+        <div className="border-border flex items-center justify-between gap-3 border-b px-6 py-4">
           <div>
             <div className="font-serif text-xl font-semibold tracking-tight">
-              {topic.trim() || "Plano de aula"}
+              {topics.trim() || "Prova"}
             </div>
             <div className="text-text-muted mt-0.5 text-xs">
-              {grade} · {duration} ·{" "}
+              {grade} · {questionCount} questões · {versions} ·{" "}
               <span className="text-text-faint">
                 {generating
                   ? "gerando..."
-                  : plan
-                    ? "alinhado à BNCC pela IA"
+                  : exam
+                    ? "matriz + gabarito prontos"
                     : "aguardando geração"}
               </span>
             </div>
           </div>
-          {plan && !generating && (
-            <div className="flex items-center gap-2">
-              {savedArtifactId && (
-                <Badge tone="success" title={savedArtifactId}>
-                  salvo
-                </Badge>
-              )}
+
+          <div className="flex shrink-0 items-center gap-2">
+            {savedArtifactId && (
+              <Badge tone="success" title={savedArtifactId}>
+                salvo
+              </Badge>
+            )}
+            {exam && !generating && (
               <Badge tone="primary">
                 <Sparkles size={10} />
                 gerado por IA
               </Badge>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="p-6">
-          {!plan && !generating && (
+          {!exam && !generating && (
             <div className="border-border flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center">
               <Sparkles size={20} className="text-text-faint" />
               <div className="text-text-muted text-sm">
-                Preencha os parâmetros à esquerda e clique em <b>Gerar plano</b>.
+                Configure a avaliação e clique em <b>Gerar prova</b>.
               </div>
               <div className="text-text-faint max-w-md text-xs">
-                A IA usa Claude Haiku 4.5 via OpenRouter. Sem
-                OPENROUTER_API_KEY configurado, cai no mock provider (texto
-                placeholder).
+                O resultado vem com questões, matriz de habilidades BNCC,
+                versões e gabarito comentado para revisão do professor.
               </div>
             </div>
           )}
-          {(plan || generating) && (
+
+          {(exam || generating) && (
             <article className="prose prose-sm max-w-none text-[14px] leading-relaxed whitespace-pre-wrap">
-              {plan}
+              {exam}
               {generating && (
                 <span
                   className="ml-1 inline-block h-4 w-0.5 align-middle"
@@ -230,6 +290,19 @@ export function CopilotoClient() {
             </article>
           )}
         </div>
+
+        {exam && !generating && (
+          <div className="border-border flex items-center justify-end gap-2 border-t px-6 py-3">
+            <Button type="button" variant="secondary" onClick={copyExam}>
+              <Copy size={14} />
+              Copiar
+            </Button>
+            <Button type="button" onClick={downloadExam}>
+              <Download size={14} />
+              Baixar .md
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );
