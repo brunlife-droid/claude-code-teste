@@ -2,7 +2,7 @@
 
 > **Atualizar este arquivo sempre que o estado do projeto mudar.** Foto rápida do que está pronto, o que está em andamento e o que ainda não foi tocado.
 >
-> Última atualização: 2026-05-16 (P4 prova real + artefatos do professor)
+> Última atualização: 2026-05-16 (P1 alertas pedagógicos reais)
 
 ---
 
@@ -43,7 +43,7 @@
 - **Auth real enforced**: `/aluno`, `/professor`, `/secretaria`, `/admin` exigem sessão via `requireRole(...)` no layout. `/api/chat` retorna 401/403 sem sessão. Login redireciona por papel pra `getLayerHomePath(role)`. Ownership de conversation validada por `studentId` da sessão (não mais teatro). As áreas autenticadas têm botão "Sair" no shell, com logout via NextAuth e retorno para `/entrar`.
 - **Tenants do DB**: `getCurrentTenant()` lê do Postgres com seed idempotente das 3 prefeituras. Fallback in-code se não houver `DATABASE_URL`. White-label dinâmico funciona (`?tenant=pousoalegre` muda cores/nome do tutor).
 - **Seed da rede (Alfenas 7º A)**: usuários demo (incluindo João antes da FK de aluno), 3 demo non-students (Ricardo prof, Cláudia sec, Bruno admin) + memberships idempotentes com update explícito de escopo; `loadTeacherContext()` também repara/faz fallback do vínculo demo do Ricardo se o Neon estiver com row antiga. Há 12 alunos no 7º A (João linkado ao user), 9 habilidades BNCC e proficiência por aluno×habilidade.
-- **Dashboard P1 do Professor real**: KPIs (engajados na semana, em risco por proficiência <0.45, total na turma) e destaques (top 3 por avg proficiency) vêm do DB. Alertas, próximas aulas e ferramentas LLM ainda mockados.
+- **Dashboard P1 do Professor real**: KPIs (engajados na semana, em risco por proficiência <0.45, total na turma), destaques (top 3 por avg proficiency) e alertas pedagógicos vêm do DB/dados reais da turma. Próximas aulas ainda dependem de integração de agenda.
 - **P5 Dashboard da Turma real**: heatmap students × habilidades BNCC + lista ordenada por proficiência + KPIs reais; para a turma demo `class-demo-7a`, há fallback de 12 alunos/9 habilidades se o Neon retornar vazio ou parcial. O foco pedagógico salva por `/api/class-focus`; ao marcar foco ou gerar token de upload, a API garante tenant/escola/turma/habilidades demo antes de gravar; `setBy`/`uploadedBy` são omitidos se o usuário demo não existir no DB, evitando FK quebrada. A lista de alunos abre o perfil real em `/professor/alunos?id=<studentId>`.
 - **P6 Perfil do Aluno real**: `/professor/alunos` carrega aluno por `studentId` e escopo de turma do professor; mostra proficiência média, habilidades BNCC do aluno, menores scores, conversas recentes e seletor de alunos da turma. PII familiar/contato ainda não é inventada sem fluxo de consentimento.
 - **P7 Diário pedagógico derivado**: `/professor/diario` monta rascunho diário a partir de roster, foco BNCC e materiais prontos da turma. Ainda não salva/edita entradas porque falta tabela dedicada de diário.

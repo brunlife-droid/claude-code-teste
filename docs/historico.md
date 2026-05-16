@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-16 — P1 alertas pedagógicos reais
+
+- `/professor` deixou de renderizar `ALERTAS_PROF` e passou a carregar `loadTeacherAlerts()` junto dos KPIs e destaques.
+- Os alertas são derivados do roster real da turma: risco por proficiência baixa, pendência por ausência/inatividade de conversa e conquista por proficiência avançada.
+- Cada alerta leva direto ao perfil real do aluno em `/professor/alunos?id=...`.
+- O KPI de próximas aulas não mostra mais um número falso; enquanto não houver agenda integrada, a tela assume "agenda pendente".
+
+Consequência: o dashboard inicial do professor fica mais honesto e mais útil na demo, com alertas conectados aos mesmos dados pedagógicos já usados em turma, perfil e diário.
+
+---
+
 ## 2026-05-16 — P7 diário pedagógico derivado da turma
 
 - `/professor/diario` deixou os cards fixos e passou a montar um rascunho diário a partir de dados reais da turma: roster, foco BNCC e materiais prontos.

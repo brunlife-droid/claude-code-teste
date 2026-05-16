@@ -261,6 +261,16 @@ export interface TopStudent {
   avgScore: number;
 }
 
+export interface TeacherAlert {
+  id: string;
+  studentId: string;
+  studentName: string;
+  type: "risk" | "pending" | "achievement";
+  priority: "alta" | "media" | "baixa";
+  reason: string;
+  href: string;
+}
+
 export async function loadTopStudents(input: {
   tenantId: string;
   classIds: string[];
@@ -307,6 +317,94 @@ export async function loadTopStudents(input: {
   }
 }
 
+export async function loadTeacherAlerts(input: {
+  tenantId: string;
+  classIds: string[];
+  limit?: number;
+}): Promise<TeacherAlert[]> {
+  if (input.classIds.length === 0) return [];
+
+  const roster = (
+    await Promise.all(
+      input.classIds.map((classId) =>
+        loadClassRoster({ tenantId: input.tenantId, classId }),
+      ),
+    )
+  ).flat();
+
+  const byStudent = new Map(
+    roster.map((student) => [student.studentId, student] as const),
+  );
+  const studentsList = Array.from(byStudent.values());
+  const now = new Date();
+  const selected = new Set<string>();
+
+  const riskAlerts = studentsList
+    .filter((student) => student.avgScore < 0.45)
+    .sort((a, b) => a.avgScore - b.avgScore)
+    .map((student) => {
+      selected.add(student.studentId);
+      return {
+        id: `risk-${student.studentId}`,
+        studentId: student.studentId,
+        studentName: student.fullName,
+        type: "risk" as const,
+        priority: (student.avgScore < 0.35 ? "alta" : "media") as const,
+        reason: `Proficiência média em ${formatPercent(student.avgScore)}; priorizar retomada individual.`,
+        href: `/professor/alunos?id=${student.studentId}`,
+      };
+    });
+
+  const pendingAlerts = studentsList
+    .filter((student) => {
+      if (selected.has(student.studentId)) return false;
+      if (student.conversationCount === 0) return true;
+      if (!student.lastActivity) return true;
+      return daysSince(student.lastActivity, now) >= 7;
+    })
+    .sort(
+      (a, b) =>
+        daysSince(b.lastActivity, now) - daysSince(a.lastActivity, now),
+    )
+    .map((student) => {
+      selected.add(student.studentId);
+      const reason =
+        student.conversationCount === 0
+          ? "Sem conversas registradas na tutora; combinar primeiro acesso."
+          : `Sem atividade há ${daysSinceLabel(student.lastActivity, now)}.`;
+      return {
+        id: `pending-${student.studentId}`,
+        studentId: student.studentId,
+        studentName: student.fullName,
+        type: "pending" as const,
+        priority: (student.conversationCount === 0 ? "alta" : "media") as const,
+        reason,
+        href: `/professor/alunos?id=${student.studentId}`,
+      };
+    });
+
+  const achievementAlerts = studentsList
+    .filter(
+      (student) => !selected.has(student.studentId) && student.avgScore >= 0.8,
+    )
+    .sort((a, b) => b.avgScore - a.avgScore)
+    .slice(0, 2)
+    .map((student) => ({
+      id: `achievement-${student.studentId}`,
+      studentId: student.studentId,
+      studentName: student.fullName,
+      type: "achievement" as const,
+      priority: "baixa" as const,
+      reason: `Atingiu proficiência avançada (${formatPercent(student.avgScore)}) no recorte atual.`,
+      href: `/professor/alunos?id=${student.studentId}`,
+    }));
+
+  return [...riskAlerts, ...pendingAlerts, ...achievementAlerts].slice(
+    0,
+    input.limit ?? 6,
+  );
+}
+
 function initialsOf(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);
   if (parts.length === 0) return "?";
@@ -321,6 +419,23 @@ export function scoreToProficiency(
   if (score >= 0.6) return "adequada";
   if (score >= 0.4) return "basica";
   return "insuficiente";
+}
+
+function formatPercent(score: number): string {
+  return `${Math.round(score * 100)}%`;
+}
+
+function daysSince(date: Date | null, now: Date): number {
+  if (!date) return Number.POSITIVE_INFINITY;
+  return Math.floor((now.getTime() - new Date(date).getTime()) / 86_400_000);
+}
+
+function daysSinceLabel(date: Date | null, now: Date): string {
+  const days = daysSince(date, now);
+  if (!Number.isFinite(days)) return "muitos dias";
+  if (days <= 0) return "menos de 1 dia";
+  if (days === 1) return "1 dia";
+  return `${days} dias`;
 }
 
 export interface HeatmapCell {

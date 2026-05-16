@@ -100,7 +100,7 @@ O `CLAUDE.md` continua sendo a documentação humana do workflow; os hooks são 
 
 ### Queries por papel (Professor / Secretaria / Admin)
 Pra evitar Server Components fazerem Drizzle direto, cada área tem um módulo de queries:
-- `src/lib/teacher/queries.ts`: `loadTeacherContext`, `loadDashboardKpis`, `loadTopStudents`, `loadClassHeatmap`, `loadClassRoster`, `loadStudentProfile`, `scoreToProficiency`.
+- `src/lib/teacher/queries.ts`: `loadTeacherContext`, `loadDashboardKpis`, `loadTeacherAlerts`, `loadTopStudents`, `loadClassHeatmap`, `loadClassRoster`, `loadStudentProfile`, `scoreToProficiency`.
 - `src/lib/secretaria/queries.ts`: `loadNetworkKpis`, `loadSchoolsHealth`.
 - `src/lib/admin/queries.ts` (futuro).
 
@@ -108,6 +108,7 @@ Todas as queries seguem o mesmo contrato: graceful (sem DATABASE_URL → retorno
 Exceção controlada de demo: `loadTeacherContext()` repara/faz fallback do vínculo `u-ricardo` → `class-demo-7a` quando o Neon estiver com membership antigo sem `class_id`; as queries de roster/heatmap/habilidades também usam ou mesclam os mocks demo se o DB retornar vazio/parcial para essa turma, para não bloquear a validação de produção.
 - `/professor/alunos` usa `loadStudentProfile({ tenantId, classIds, studentId })`, então o perfil só abre alunos das turmas vinculadas ao usuário pedagógico logado. A tela evita exibir PII familiar sem fluxo consentido e se limita ao escopo pedagógico já persistido.
 - `/professor/diario` ainda não tem tabela própria; ele deriva um rascunho pedagógico de `loadClassRoster`, `loadClassFocus` e `loadClassMaterials`, e explicita na UI que salvar/editar/assinar diário fica pendente.
+- `/professor` usa `loadTeacherAlerts()` para derivar alertas de risco, pendência de engajamento e conquista a partir do roster real da turma, sem tabela nova e sempre filtrado por `tenantId` + `classIds`.
 
 ### Capabilities LLM ativas
 Cada capability tem rota e prompt versionado. **Em runtime, o gateway lê a rota e o prompt ativos do DB via `src/lib/llm/config.ts`**, caindo no hardcoded (`routes.ts`/`prompts/*.ts`) quando o DB não tem registro ou está indisponível. Isso permite editar config (provider, modelo, temperature, maxTokens, prompt) **sem deploy** pela tela `/admin/configuracoes/llm`.

@@ -8,12 +8,12 @@ import {
 } from "lucide-react";
 import { Badge, Button, Card, ProfBadge } from "@/components/ui";
 import { PageHeader, PageBody } from "@/components/layout";
-import { ALERTAS_PROF } from "@/lib/mocks";
 import { requireRole } from "@/lib/auth/session";
 import { getCurrentTenant } from "@/lib/tenants/server";
 import {
   loadTeacherContext,
   loadDashboardKpis,
+  loadTeacherAlerts,
   loadTopStudents,
   scoreToProficiency,
 } from "@/lib/teacher/queries";
@@ -52,9 +52,10 @@ export default async function ProfessorDashboard() {
     userId: user.id,
     tenantId: tenant.id,
   });
-  const [kpis, top] = await Promise.all([
+  const [kpis, top, alerts] = await Promise.all([
     loadDashboardKpis({ tenantId: tenant.id, classIds: ctx.classIds }),
     loadTopStudents({ tenantId: tenant.id, classIds: ctx.classIds, limit: 3 }),
+    loadTeacherAlerts({ tenantId: tenant.id, classIds: ctx.classIds, limit: 6 }),
   ]);
 
   const firstName = user.name?.split(" ")[0] ?? "Professor";
@@ -86,8 +87,8 @@ export default async function ProfessorDashboard() {
     },
     {
       label: "Próximas aulas",
-      value: "3",
-      sub: "hoje (mock)",
+      value: "—",
+      sub: "agenda pendente",
     },
   ];
 
@@ -147,27 +148,30 @@ export default async function ProfessorDashboard() {
             <div className="mt-2">
               <div className="text-text-faint text-[11.5px] font-semibold tracking-wider uppercase">
                 Alertas pedagógicos
-                <span className="text-text-faint ml-2 normal-case tracking-normal">
-                  (ainda mockados)
-                </span>
               </div>
               <Card className="mt-2 p-0">
-                {ALERTAS_PROF.map((a, i) => {
+                {alerts.length === 0 && (
+                  <div className="text-text-muted p-4 text-sm">
+                    Nenhum alerta pedagógico ativo para as turmas vinculadas.
+                  </div>
+                )}
+                {alerts.map((a) => {
                   const tone =
-                    a.tipo === "risco"
+                    a.type === "risk"
                       ? "danger"
-                      : a.tipo === "pendencia"
+                      : a.type === "pending"
                         ? "warning"
                         : "success";
                   const Icon =
-                    a.tipo === "risco"
+                    a.type === "risk"
                       ? AlertTriangle
-                      : a.tipo === "pendencia"
+                      : a.type === "pending"
                         ? AlertTriangle
                         : Trophy;
                   return (
-                    <div
-                      key={i}
+                    <Link
+                      key={a.id}
+                      href={a.href}
                       className="border-border flex items-start gap-3 p-4 not-last:border-b"
                     >
                       <div
@@ -183,28 +187,30 @@ export default async function ProfessorDashboard() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium">{a.aluno}</span>
+                          <span className="text-sm font-medium">
+                            {a.studentName}
+                          </span>
                           <Badge
                             tone={
-                              a.urgencia === "alta"
+                              a.priority === "alta"
                                 ? "danger"
-                                : a.urgencia === "media"
+                                : a.priority === "media"
                                   ? "warning"
                                   : "neutral"
                             }
                           >
-                            {a.urgencia}
+                            {a.priority}
                           </Badge>
                         </div>
                         <div className="text-text-muted mt-1 text-xs">
-                          {a.motivo}
+                          {a.reason}
                         </div>
                       </div>
                       <ArrowRight
                         size={14}
                         className="text-text-faint mt-2 shrink-0"
                       />
-                    </div>
+                    </Link>
                   );
                 })}
               </Card>
@@ -254,9 +260,9 @@ export default async function ProfessorDashboard() {
                 Estado das telas
               </div>
               <p className="text-primary mt-1 text-sm leading-relaxed">
-                KPIs e destaques saem do DB real. Alertas, próximas aulas e
-                ferramentas (plano, correção, prova) ainda são placeholders —
-                próximas sessões.
+                KPIs, destaques, alertas e ferramentas de IA já usam dados ou
+                rotas reais. A agenda de aulas ainda depende de integração
+                própria.
               </p>
             </Card>
           </div>
