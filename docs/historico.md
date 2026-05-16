@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-05-16 — P7 diário pedagógico derivado da turma
+
+- `/professor/diario` deixou os cards fixos e passou a montar um rascunho diário a partir de dados reais da turma: roster, foco BNCC e materiais prontos.
+- A tela mostra KPIs da turma, alunos abaixo do corte de atenção, habilidades foco e materiais conectados ao RAG.
+- O botão "Nova entrada" fica desabilitado e a própria tela informa que ainda falta tabela dedicada para salvar/editar/assinar entradas.
+
+Consequência: P7 já ajuda na demo com dado real sem fingir persistência que ainda não existe.
+
+---
+
 ## 2026-05-16 — P6 perfil do aluno real
 
 - `/professor/alunos` deixou de usar `ALUNOS_7A[0]` fixo e passou a carregar o aluno pelo DB via `loadStudentProfile()`, respeitando as turmas vinculadas ao professor.
