@@ -123,6 +123,7 @@ export async function recordTeacherArtifact(input: {
     await db()
       .insert(auditLog)
       .values({
+        id: artifactId,
         tenantId: input.tenantId,
         actorUserId: null,
         action: "teacher_artifact.create",
