@@ -29,7 +29,7 @@ Consequência: o professor já consegue gerar prova real em produção e os prin
 - Ajustado provider de storage e upload de materiais para `access: "private"`, compatível com o store privado.
 - `/api/material/process` passou a baixar material privado com `get()` do `@vercel/blob`, em vez de `fetch()` direto na URL privada.
 - `/api/material/upload` resolve `tenantId` no servidor, via sessão/contexto, em vez de confiar em payload do cliente.
-- Seed da rede agora atualiza memberships demo existentes para garantir que Ricardo fique vinculado ao `7º A` mesmo quando a row antiga já existia sem `classId`.
+- Seed da rede agora atualiza memberships demo existentes por `userId + tenantId + role`, sem depender do índice composto, para garantir que Ricardo fique vinculado ao `7º A` mesmo quando a row antiga já existia sem `classId`.
 
 Consequência: uploads passam a respeitar o store privado da Vercel e ficam mais alinhados com LGPD/material escolar sensível.
 

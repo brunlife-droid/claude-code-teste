@@ -8,7 +8,7 @@
  * Se DATABASE_URL não estiver configurada, retorna silenciosamente.
  */
 
-import { sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "./client";
 import {
   classes,
@@ -100,13 +100,23 @@ export async function ensureNetworkSeeded(): Promise<void> {
           classId: u.classId,
         })),
       )
-      .onConflictDoUpdate({
-        target: [memberships.userId, memberships.tenantId, memberships.role],
-        set: {
-          schoolId: sql`excluded.school_id`,
-          classId: sql`excluded.class_id`,
-        },
-      });
+      .onConflictDoNothing();
+
+    for (const u of DEMO_NON_STUDENTS) {
+      await d
+        .update(memberships)
+        .set({
+          schoolId: u.role === "professor" ? SCHOOL_ID : null,
+          classId: u.classId,
+        })
+        .where(
+          and(
+            eq(memberships.userId, u.id),
+            eq(memberships.tenantId, TENANT_ID),
+            eq(memberships.role, u.role),
+          ),
+        );
+    }
 
     await d
       .insert(students)
