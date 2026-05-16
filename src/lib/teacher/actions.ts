@@ -12,28 +12,14 @@
  * de Client Components.
  */
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import {
-  chunks,
-  classes,
-  classFocusSkills,
-  documents,
-  habilities,
-  schools,
-  tenants,
-  users,
-} from "@/lib/db/schema";
+import { chunks, classes, documents } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentTenant } from "@/lib/tenants/server";
-import { TENANTS } from "@/lib/tenants/config";
-import { HABILIDADES_BNCC } from "@/lib/mocks";
-import type { NexusSessionUser } from "@/lib/auth/types";
-
-const DEMO_TENANT_ID = "alfenas";
-const DEMO_SCHOOL_ID = "school-demo-alfenas";
-const DEMO_CLASS_ID = "class-demo-7a";
+import { ensureDemoClassScope, ensureSessionUserId } from "./demo-db";
+import { saveClassFocus } from "./focus-service";
 
 async function requirePedagogicalSession() {
   const session = await auth();
@@ -68,56 +54,16 @@ export async function setClassFocus(input: {
 }) {
   const user = await requirePedagogicalSession();
   const tenant = await getCurrentTenant();
-
-  if (!process.env.DATABASE_URL) return { ok: true, applied: 0 };
-
-  try {
-    await ensureDemoClassScope(input.classId, tenant.id);
-    await assertClassInTenant(input.classId, tenant.id);
-    const actorUserId = await ensureActionUser(user);
-
-    // Substitui o conjunto inteiro de habilidades em foco (mais simples
-    // que diff e suficiente — a lista é curta).
-    await db()
-      .delete(classFocusSkills)
-      .where(
-        and(
-          eq(classFocusSkills.classId, input.classId),
-          eq(classFocusSkills.tenantId, tenant.id),
-        ),
-      );
-
-    if (input.habilityCodes.length > 0) {
-      await ensureHabilities(input.habilityCodes);
-      const values = [...new Set(input.habilityCodes)].map((code) => ({
-            tenantId: tenant.id,
-            classId: input.classId,
-            habilityCode: code,
-            setBy: actorUserId,
-          }));
-
-      await db()
-        .insert(classFocusSkills)
-        .values(values)
-        .onConflictDoUpdate({
-          target: [classFocusSkills.classId, classFocusSkills.habilityCode],
-          set: {
-            tenantId: tenant.id,
-            setBy: actorUserId,
-          },
-        });
-    }
-
+  const result = await saveClassFocus({
+    actor: user,
+    classId: input.classId,
+    habilityCodes: input.habilityCodes,
+    tenantId: tenant.id,
+  });
+  if (result.ok) {
     revalidatePath("/professor/turma");
-    return { ok: true, applied: input.habilityCodes.length };
-  } catch (err) {
-    console.error("[teacher/actions] setClassFocus failed:", err);
-    return {
-      ok: false,
-      applied: 0,
-      error: "Não foi possível salvar o foco agora.",
-    };
   }
+  return result;
 }
 
 export async function deleteClassMaterial(input: { documentId: string }) {
@@ -177,7 +123,7 @@ export async function ensureMaterialProcessing(input: {
   await assertClassInTenant(input.classId, tenant.id);
 
   if (!process.env.DATABASE_URL) return { ok: true };
-  const actorUserId = await ensureActionUser(user);
+  const actorUserId = await ensureSessionUserId(user);
 
   // Verifica se já existe row pra essa URL (webhook pode ter criado).
   const existing = (
@@ -209,98 +155,6 @@ export async function ensureMaterialProcessing(input: {
 
   revalidatePath("/professor/turma");
   return { ok: true, documentId };
-}
-
-async function ensureHabilities(codes: string[]) {
-  const known = HABILIDADES_BNCC.filter((h) => codes.includes(h.codigo));
-  if (known.length === 0) return;
-
-  await db()
-    .insert(habilities)
-    .values(
-      known.map((h) => ({
-        code: h.codigo,
-        area: h.area,
-        description: h.desc,
-        grade: "7",
-      })),
-    )
-    .onConflictDoNothing();
-}
-
-async function ensureActionUser(user: NexusSessionUser): Promise<string | null> {
-  try {
-    await db()
-      .insert(users)
-      .values({
-        id: user.id,
-        email: user.email ?? null,
-        name: user.name ?? user.email ?? user.id,
-        image: user.image ?? null,
-      })
-      .onConflictDoNothing();
-
-    const row = (
-      await db()
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.id, user.id))
-        .limit(1)
-    )[0];
-    return row?.id ?? null;
-  } catch (err) {
-    console.warn("[teacher/actions] ensureActionUser failed:", err);
-    return null;
-  }
-}
-
-async function ensureDemoClassScope(classId: string, tenantId: string) {
-  if (classId !== DEMO_CLASS_ID || tenantId !== DEMO_TENANT_ID) return;
-  const tenant = TENANTS.alfenas;
-
-  await db()
-    .insert(tenants)
-    .values({
-      id: tenant.id,
-      subdomain: tenant.subdomain,
-      name: tenant.name,
-      short: tenant.short,
-      uf: tenant.uf,
-      monogram: tenant.monogram,
-      status: "ativo" as const,
-      tutorName: tenant.tutorName,
-      tutorFullName: tenant.tutorFull,
-      primary: tenant.primary,
-      primaryHover: tenant.primaryHover,
-      primaryFg: tenant.primaryFg,
-      primarySoft: tenant.primarySoft,
-      primaryBorder: tenant.primaryBorder,
-      secondary: tenant.secondary,
-      secondarySoft: tenant.secondarySoft,
-      secondaryFg: tenant.secondaryFg,
-    })
-    .onConflictDoNothing();
-
-  await db()
-    .insert(schools)
-    .values({
-      id: DEMO_SCHOOL_ID,
-      tenantId: DEMO_TENANT_ID,
-      name: "EM Padre Eustáquio",
-    })
-    .onConflictDoNothing();
-
-  await db()
-    .insert(classes)
-    .values({
-      id: DEMO_CLASS_ID,
-      tenantId: DEMO_TENANT_ID,
-      schoolId: DEMO_SCHOOL_ID,
-      name: "7º A",
-      grade: "7",
-      year: new Date().getFullYear(),
-    })
-    .onConflictDoNothing();
 }
 
 function pickType(contentType: string): string {

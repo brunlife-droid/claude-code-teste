@@ -25,14 +25,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { classes, documents, schools, tenants, users } from "@/lib/db/schema";
+import { classes, documents } from "@/lib/db/schema";
 import { getCurrentTenant } from "@/lib/tenants/server";
-import { TENANTS } from "@/lib/tenants/config";
-import type { NexusSessionUser } from "@/lib/auth/types";
-
-const DEMO_TENANT_ID = "alfenas";
-const DEMO_SCHOOL_ID = "school-demo-alfenas";
-const DEMO_CLASS_ID = "class-demo-7a";
+import {
+  ensureDemoClassScope,
+  ensureSessionUserId,
+} from "@/lib/teacher/demo-db";
 
 const ALLOWED_MIME = [
   "application/pdf",
@@ -84,7 +82,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           }
         }
         const uploadedBy = process.env.DATABASE_URL
-          ? await ensureUploadUser(session.user)
+          ? await ensureSessionUserId(session.user)
           : null;
 
         return {
@@ -141,81 +139,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 400 },
     );
   }
-}
-
-async function ensureUploadUser(user: NexusSessionUser): Promise<string | null> {
-  try {
-    await db()
-      .insert(users)
-      .values({
-        id: user.id,
-        email: user.email ?? null,
-        name: user.name ?? user.email ?? user.id,
-        image: user.image ?? null,
-      })
-      .onConflictDoNothing();
-
-    const row = (
-      await db()
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.id, user.id))
-        .limit(1)
-    )[0];
-    return row?.id ?? null;
-  } catch (err) {
-    console.warn("[material/upload] ensureUploadUser failed:", err);
-    return null;
-  }
-}
-
-async function ensureDemoClassScope(classId: string, tenantId: string) {
-  if (classId !== DEMO_CLASS_ID || tenantId !== DEMO_TENANT_ID) return;
-  const tenant = TENANTS.alfenas;
-
-  await db()
-    .insert(tenants)
-    .values({
-      id: tenant.id,
-      subdomain: tenant.subdomain,
-      name: tenant.name,
-      short: tenant.short,
-      uf: tenant.uf,
-      monogram: tenant.monogram,
-      status: "ativo" as const,
-      tutorName: tenant.tutorName,
-      tutorFullName: tenant.tutorFull,
-      primary: tenant.primary,
-      primaryHover: tenant.primaryHover,
-      primaryFg: tenant.primaryFg,
-      primarySoft: tenant.primarySoft,
-      primaryBorder: tenant.primaryBorder,
-      secondary: tenant.secondary,
-      secondarySoft: tenant.secondarySoft,
-      secondaryFg: tenant.secondaryFg,
-    })
-    .onConflictDoNothing();
-
-  await db()
-    .insert(schools)
-    .values({
-      id: DEMO_SCHOOL_ID,
-      tenantId: DEMO_TENANT_ID,
-      name: "EM Padre Eustáquio",
-    })
-    .onConflictDoNothing();
-
-  await db()
-    .insert(classes)
-    .values({
-      id: DEMO_CLASS_ID,
-      tenantId: DEMO_TENANT_ID,
-      schoolId: DEMO_SCHOOL_ID,
-      name: "7º A",
-      grade: "7",
-      year: new Date().getFullYear(),
-    })
-    .onConflictDoNothing();
 }
 
 function pickType(contentType: string | undefined): string {

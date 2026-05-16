@@ -39,6 +39,7 @@ Consequência: o professor já consegue gerar prova real em produção e os prin
 - As mesmas garantias também criam o tenant demo `alfenas` antes das FKs de escola/turma quando a base ainda não tem a row.
 - A lista de habilidades disponíveis agora mescla DB + fallback demo, evitando que uma base parcialmente seedada mostre só a habilidade recém-inserida.
 - `setClassFocus()` e `/api/material/upload` agora só gravam `setBy`/`uploadedBy` quando o usuário demo existe de fato no DB; se houver conflito legado de e-mail/id, a ação continua salvando sem violar FK.
+- Criado `/api/class-focus` para salvar foco BNCC por JSON autenticado, e o painel passou a usar esse endpoint em vez de depender de Server Action opaca no cliente.
 
 Consequência: uploads passam a respeitar o store privado da Vercel e ficam mais alinhados com LGPD/material escolar sensível.
 

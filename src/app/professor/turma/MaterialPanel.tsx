@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { Badge, Button, Card } from "@/components/ui";
 import {
-  setClassFocus,
   deleteClassMaterial,
   ensureMaterialProcessing,
 } from "@/lib/teacher/actions";
@@ -88,10 +87,15 @@ export function MaterialPanel({
   function save() {
     startSaving(async () => {
       setFocusError(null);
-      const result = await setClassFocus({
-        classId,
-        habilityCodes: selectedCodes,
+      const response = await fetch("/api/class-focus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classId, habilityCodes: selectedCodes }),
       });
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
       if (!result.ok) {
         setFocusError(result.error ?? "Não foi possível salvar o foco agora.");
         return;
