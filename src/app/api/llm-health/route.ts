@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { complete } from "@/lib/llm";
 import { routeFor } from "@/lib/llm/routes";
 import { auth } from "@/lib/auth";
+import { createBufferedSseResponse } from "@/lib/http/sse";
 import type { Capability } from "@/lib/llm/types";
 
 /**
@@ -51,6 +52,21 @@ export async function GET(request: NextRequest) {
     });
 
     const isReal = result.provider === "openrouter";
+    if (request.nextUrl.searchParams.get("format") === "sse") {
+      return createBufferedSseResponse([
+        { type: "text", text: result.text },
+        {
+          type: "done",
+          meta: {
+            provider: result.provider,
+            model: result.model,
+            inputTokens: result.inputTokens,
+            outputTokens: result.outputTokens,
+            latencyMs: result.latencyMs,
+          },
+        },
+      ]);
+    }
 
     return NextResponse.json({
       ok: true,
