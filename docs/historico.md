@@ -13,6 +13,7 @@
 - Criada a capability `student_artifact_generation`, com prompt JSON próprio e rota `/api/student-artifacts` para gerar cartões, quiz e resumo guiado a partir de um tema ou conversa do aluno.
 - Nova página `/aluno/estudo` entrega a experiência interativa de cartões viráveis, quiz com feedback e resumo guiado; os artefatos são persistidos best-effort em `audit_log` com `action='student_artifact.create'`.
 - Ações sensíveis de análise de anexo registram `student.chat.attachment_analyze` em `audit_log` sem exigir migration nova.
+- Normalização de mensagens/anexos ajustada para passar no typecheck do Next 16/TypeScript estrito, mantendo o mesmo contrato aceito por `/api/chat`.
 
 Consequência: a próxima validação de produção deixa de ser só chat textual; o aluno já consegue enviar mídia/documentos para a tutora analisar e transformar o material em estudo ativo.
 

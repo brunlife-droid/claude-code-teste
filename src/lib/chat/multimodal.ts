@@ -29,22 +29,26 @@ const MAX_RAG_TEXT = 4000;
 
 export function normalizeIncomingMessages(value: unknown): IncomingChatMessage[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const raw = item as Record<string, unknown>;
-      if (
-        raw.role !== "user" &&
-        raw.role !== "assistant" &&
-        raw.role !== "system"
-      ) {
-        return null;
-      }
-      const content = typeof raw.content === "string" ? raw.content : "";
-      const attachments = normalizeAttachments(raw.attachments);
-      return { role: raw.role, content, attachments } satisfies IncomingChatMessage;
-    })
-    .filter((item): item is IncomingChatMessage => !!item);
+  const messages: IncomingChatMessage[] = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const raw = item as Record<string, unknown>;
+    if (
+      raw.role !== "user" &&
+      raw.role !== "assistant" &&
+      raw.role !== "system"
+    ) {
+      continue;
+    }
+    messages.push({
+      role: raw.role,
+      content: typeof raw.content === "string" ? raw.content : "",
+      attachments: normalizeAttachments(raw.attachments),
+    });
+  }
+
+  return messages;
 }
 
 export async function prepareChatPayload(
@@ -227,27 +231,29 @@ async function processAttachment(input: IncomingChatAttachment): Promise<{
 
 function normalizeAttachments(value: unknown): IncomingChatAttachment[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const raw = item as Record<string, unknown>;
-      if (
-        raw.kind !== "image" &&
-        raw.kind !== "audio" &&
-        raw.kind !== "document"
-      ) {
-        return null;
-      }
-      if (typeof raw.url !== "string" || raw.url.length === 0) return null;
-      return {
-        kind: raw.kind,
-        url: raw.url,
-        mime: typeof raw.mime === "string" ? raw.mime : undefined,
-        name: typeof raw.name === "string" ? raw.name : undefined,
-        size: typeof raw.size === "number" ? raw.size : undefined,
-      } satisfies IncomingChatAttachment;
-    })
-    .filter((item): item is IncomingChatAttachment => !!item);
+  const attachments: IncomingChatAttachment[] = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const raw = item as Record<string, unknown>;
+    if (
+      raw.kind !== "image" &&
+      raw.kind !== "audio" &&
+      raw.kind !== "document"
+    ) {
+      continue;
+    }
+    if (typeof raw.url !== "string" || raw.url.length === 0) continue;
+    attachments.push({
+      kind: raw.kind,
+      url: raw.url,
+      mime: typeof raw.mime === "string" ? raw.mime : undefined,
+      name: typeof raw.name === "string" ? raw.name : undefined,
+      size: typeof raw.size === "number" ? raw.size : undefined,
+    });
+  }
+
+  return attachments;
 }
 
 function textWithAttachmentSummaries(
@@ -363,7 +369,7 @@ async function transcribeAudio(input: {
 function parseDataUrl(
   url: string,
 ): { ok: true; buffer: Buffer; mime?: string } | { ok: false; error: string } {
-  const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(url);
+  const match = /^data:([^;,]+)?(;base64)?,([\s\S]*)$/.exec(url);
   if (!match) return { ok: false, error: "data URL invalida" };
   try {
     const mime = match[1] || undefined;
