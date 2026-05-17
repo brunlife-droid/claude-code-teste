@@ -22,14 +22,14 @@ export default async function ProfessorLayout({
   );
   const tenant = await getCurrentTenant();
   return (
-    <div className="bg-canvas grid h-screen grid-cols-[260px_1fr] overflow-hidden">
+    <div className="app-shell grid h-screen grid-cols-[260px_1fr] overflow-hidden">
       <Sidebar
         layer="professor"
         tenant={tenant}
         userName={user.name ?? "Professor"}
         userRole={getRoleLabel(user.role)}
       />
-      <main className="scroll-thin flex min-h-0 flex-col overflow-auto">
+      <main className="app-main scroll-thin flex min-h-0 flex-col overflow-auto">
         <Topbar layer="professor" userName={user.name ?? "Professor"} />
         <div className="flex-1">{children}</div>
       </main>

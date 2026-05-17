@@ -19,12 +19,12 @@ export function Topbar({ layer, userName }: TopbarProps) {
   const screenLabel = screen?.label ?? "Visão geral";
 
   return (
-    <div className="bg-surface border-border flex h-14 shrink-0 items-center gap-4 border-b px-6">
+    <div className="bg-surface-raised/95 border-border/80 flex h-14 shrink-0 items-center gap-4 border-b px-6 shadow-[var(--shadow-xs)] backdrop-blur">
       {/* Breadcrumb */}
-      <div className="text-text-muted flex items-center gap-2 text-[13px]">
+      <div className="text-text-subtle flex items-center gap-2 text-[13px]">
         <span>{config.label}</span>
         <ChevronRight size={14} className="opacity-60" />
-        <span className="text-text font-medium">{screenLabel}</span>
+        <span className="text-text font-semibold">{screenLabel}</span>
       </div>
 
       <div className="flex-1" />
@@ -37,10 +37,10 @@ export function Topbar({ layer, userName }: TopbarProps) {
         />
         <input
           placeholder="Buscar alunos, escolas, ações…"
-          className="bg-surface border-border-strong placeholder:text-text-faint focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-soft)] h-8 w-full rounded-md border pr-12 pl-8 text-[13px] outline-none"
+          className="bg-surface-2 border-border placeholder:text-text-faint focus:border-primary focus:bg-surface-raised focus:shadow-[0_0_0_3px_var(--primary-soft)] h-8 w-full rounded-md border pr-12 pl-8 text-[13px] outline-none transition-colors"
         />
         <span
-          className="border-border-strong text-text-muted absolute top-1/2 right-2 inline-flex -translate-y-1/2 items-center rounded border-b-2 bg-[var(--surface)] px-1.5 py-0.5 text-[11px]"
+          className="border-primary-border text-primary absolute top-1/2 right-2 inline-flex -translate-y-1/2 items-center rounded border bg-primary-soft px-1.5 py-0.5 text-[11px]"
           style={{ fontFamily: "var(--font-mono)" }}
         >
           ⌘K
@@ -51,7 +51,7 @@ export function Topbar({ layer, userName }: TopbarProps) {
       <button
         type="button"
         aria-label="Notificações"
-        className="text-text-muted hover:bg-surface-2 relative rounded-md p-1.5"
+        className="text-text-muted hover:bg-primary-soft hover:text-primary relative rounded-md p-1.5 transition-colors"
       >
         <Bell size={16} />
         <span className="bg-danger absolute top-1 right-1.5 size-1.5 rounded-full" />

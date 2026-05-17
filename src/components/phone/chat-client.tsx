@@ -303,9 +303,9 @@ export function ChatClient({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <header className="border-border flex h-14 shrink-0 items-center gap-3 border-b px-6">
+      <header className="bg-surface-raised/95 border-border/80 flex h-14 shrink-0 items-center gap-3 border-b px-6 shadow-[var(--shadow-xs)]">
         <div
-          className="relative flex size-8 items-center justify-center rounded-full text-sm font-semibold"
+          className="relative flex size-8 items-center justify-center rounded-lg text-sm font-semibold shadow-[var(--shadow-xs)]"
           style={{
             background: tenant.primarySoft,
             color: tenant.primary,
@@ -392,7 +392,10 @@ export function ChatClient({
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSend} className="border-border border-t px-6 py-4">
+      <form
+        onSubmit={handleSend}
+        className="bg-surface-raised/95 border-border/80 border-t px-6 py-4 shadow-[0_-8px_24px_rgba(16,24,40,0.04)]"
+      >
         <input
           ref={fileInputRef}
           type="file"
@@ -401,13 +404,13 @@ export function ChatClient({
           onChange={handleFileChange}
         />
         <div className="mx-auto max-w-[760px]">
-          <div className="bg-surface border-border-strong focus-within:border-primary focus-within:shadow-[0_0_0_3px_var(--primary-soft)] flex items-end gap-2 rounded-2xl border p-3 transition-all">
+          <div className="bg-surface-raised border-border-strong focus-within:border-primary focus-within:shadow-[0_0_0_4px_var(--primary-soft)] flex items-end gap-2 rounded-xl border p-3 shadow-[var(--shadow-sm)] transition-all">
             <button
               type="button"
               aria-label="Anexar"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading || sending}
-              className="text-text-muted hover:bg-surface-2 shrink-0 rounded-md p-2 transition-colors disabled:opacity-40"
+              className="text-text-muted hover:bg-primary-soft hover:text-primary shrink-0 rounded-md p-2 transition-colors disabled:opacity-40"
             >
               <Paperclip size={18} />
             </button>
@@ -416,7 +419,7 @@ export function ChatClient({
               aria-label="Tirar foto"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading || sending}
-              className="text-text-muted hover:bg-surface-2 shrink-0 rounded-md p-2 transition-colors disabled:opacity-40"
+              className="text-text-muted hover:bg-primary-soft hover:text-primary shrink-0 rounded-md p-2 transition-colors disabled:opacity-40"
             >
               <ImageIcon size={18} />
             </button>
@@ -435,7 +438,7 @@ export function ChatClient({
               aria-label="Enviar áudio"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading || sending}
-              className="text-text-muted hover:bg-surface-2 shrink-0 rounded-md p-2 transition-colors"
+              className="text-text-muted hover:bg-primary-soft hover:text-primary shrink-0 rounded-md p-2 transition-colors"
             >
               <Mic size={18} />
             </button>
@@ -443,7 +446,7 @@ export function ChatClient({
               type="submit"
               aria-label="Enviar"
               disabled={!input.trim() || sending}
-              className="shrink-0 rounded-md p-2 transition-colors disabled:opacity-40"
+              className="shrink-0 rounded-md p-2 shadow-[var(--shadow-xs)] transition-all hover:-translate-y-px disabled:opacity-40"
               style={{
                 background: tenant.primary,
                 color: tenant.primaryFg,
@@ -483,7 +486,7 @@ function MessageBubble({
           />
         ))}
         {message.content && (
-          <div className="bg-surface-2 max-w-[80%] rounded-2xl rounded-tr-md px-4 py-3 text-[15px] leading-relaxed">
+          <div className="bg-primary-soft text-text border-primary-border max-w-[80%] rounded-xl rounded-tr-md border px-4 py-3 text-[15px] leading-relaxed shadow-[var(--shadow-xs)]">
             {message.content}
           </div>
         )}
@@ -493,7 +496,7 @@ function MessageBubble({
   return (
     <div className="flex gap-3">
       <div
-        className="flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+        className="flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold shadow-[var(--shadow-xs)]"
         style={{
           background: tutorSoft,
           color: tutorPrimary,
@@ -538,14 +541,14 @@ function AttachmentPreview({
       <img
         src={attachment.url}
         alt={attachment.name ?? "Imagem enviada"}
-        className="border-border max-h-[300px] max-w-[60%] rounded-2xl rounded-tr-md border object-cover shadow-[var(--shadow-sm)]"
+        className="border-primary-border max-h-[300px] max-w-[60%] rounded-xl rounded-tr-md border object-cover shadow-[var(--shadow-md)]"
       />
     );
   }
 
   if (attachment.kind === "audio") {
     return (
-      <div className="border-border bg-surface-2 w-full max-w-[360px] rounded-2xl rounded-tr-md border p-3 shadow-[var(--shadow-sm)]">
+      <div className="border-primary-border bg-primary-soft w-full max-w-[360px] rounded-xl rounded-tr-md border p-3 shadow-[var(--shadow-sm)]">
         <div className="text-text-muted mb-2 flex items-center gap-2 text-xs">
           <Mic size={13} />
           <span className="truncate">{attachment.name ?? "Áudio enviado"}</span>
@@ -556,7 +559,7 @@ function AttachmentPreview({
   }
 
   return (
-    <div className="border-border bg-surface-2 text-text-muted flex max-w-[360px] items-center gap-2 rounded-2xl rounded-tr-md border px-4 py-3 text-sm shadow-[var(--shadow-sm)]">
+    <div className="border-primary-border bg-primary-soft text-text-muted flex max-w-[360px] items-center gap-2 rounded-xl rounded-tr-md border px-4 py-3 text-sm shadow-[var(--shadow-sm)]">
       <FileText size={16} className="shrink-0" />
       <span className="min-w-0 truncate">
         {attachment.name ?? "Documento enviado"}

@@ -16,9 +16,11 @@ export default async function AlunoLayout({
   const user = await requireRole("aluno", "responsavel");
   const tenant = await getCurrentTenant();
   return (
-    <div className="bg-canvas grid h-screen grid-cols-[280px_1fr] overflow-hidden">
+    <div className="app-shell grid h-screen grid-cols-[280px_1fr] overflow-hidden">
       <AlunoSidebar tenant={tenant} studentName={user.name ?? "Aluno"} />
-      <main className="flex min-h-0 flex-col overflow-hidden">{children}</main>
+      <main className="app-main flex min-h-0 flex-col overflow-hidden">
+        {children}
+      </main>
     </div>
   );
 }

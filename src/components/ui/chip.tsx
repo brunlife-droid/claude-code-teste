@@ -8,7 +8,7 @@ export const Chip = React.forwardRef<
   <span
     ref={ref}
     className={cn(
-      "bg-surface-2 text-text-muted border-border inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs",
+      "bg-surface-raised text-text-muted border-border inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-[var(--shadow-xs)] transition-colors hover:border-primary-border hover:bg-primary-soft hover:text-primary",
       className,
     )}
     {...props}

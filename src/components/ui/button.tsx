@@ -3,16 +3,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/cn";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md border font-medium leading-none whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 rounded-md border font-semibold leading-none whitespace-nowrap transition-all focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         primary:
-          "bg-primary text-primary-fg border-primary hover:bg-primary-hover hover:border-primary-hover",
+          "bg-primary text-primary-fg border-primary shadow-[0_8px_18px_color-mix(in_srgb,var(--primary)_24%,transparent)] hover:bg-primary-hover hover:border-primary-hover hover:-translate-y-px",
         secondary:
-          "bg-surface text-text border-border-strong hover:bg-surface-2",
-        ghost: "bg-transparent text-text border-transparent hover:bg-surface-2",
-        danger: "bg-danger text-white border-danger hover:opacity-90",
+          "bg-surface-raised text-text border-border-strong shadow-[var(--shadow-xs)] hover:bg-surface-tint hover:border-primary-border",
+        ghost:
+          "bg-transparent text-text-muted border-transparent hover:bg-primary-soft hover:text-primary",
+        danger:
+          "bg-danger text-white border-danger shadow-[0_8px_18px_rgba(220,38,38,0.18)] hover:opacity-90 hover:-translate-y-px",
       },
       size: {
         sm: "h-7 px-2.5 text-xs",

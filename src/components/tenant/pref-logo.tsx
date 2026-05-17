@@ -22,15 +22,15 @@ export function PrefLogo({
   return (
     <div className={cn("inline-flex items-center gap-2.5", className)}>
       <div
-        className="flex items-center justify-center overflow-hidden rounded-md font-bold tracking-tight"
+        className="flex items-center justify-center overflow-hidden rounded-lg font-bold tracking-tight ring-1 ring-white/40"
         style={{
           width: size,
           height: size,
-          background: tenant.primary,
+          background: `linear-gradient(135deg, ${tenant.primary}, ${tenant.secondary})`,
           color: tenant.primaryFg,
           fontSize: size * 0.36,
           fontFamily: "var(--font-serif)",
-          boxShadow: `inset 0 -2px 0 ${tenant.secondary}`,
+          boxShadow: `0 8px 18px color-mix(in srgb, ${tenant.primary} 24%, transparent)`,
         }}
       >
         {tenant.monogram}

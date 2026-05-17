@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-17 — Revitalização visual global
+
+- A paleta base deixou de depender tanto de cinzas neutros e passou a usar superfícies claras, washes da marca do tenant e acentos pedagógicos para dar mais energia sem infantilizar a interface.
+- `globals.css` ganhou tokens e helpers compartilhados (`app-shell`, `app-main`, `surface-card`, `surface-card-strong`, `soft-band`, `lift-on-hover`, `section-label`) para padronizar o novo visual entre Aluno, Professor, Secretaria e Admin.
+- Shells, topbar, sidebar, cabeçalhos, botões, cards, badges e chips foram ajustados para usar superfícies mais luminosas, bordas menos pesadas, sombras sutis e estados de hover mais vivos.
+- As telas mais críticas do aluno (`/aluno/chat` e `/aluno/estudo`) receberam uma passada específica em input, mensagens, anexos, artefatos, quiz e resumo guiado para parecerem mais motivadoras.
+
+Consequência: a aplicação fica menos cinza e mais alinhada com uma experiência SaaS educacional white-label, mantendo o tom institucional necessário para redes públicas.
+
+---
+
 ## 2026-05-17 — Validação de produção do chat multimodal e estudo ativo
 
 - Deploy `8fefb7c` no projeto Vercel `claude-code-teste` passou depois da correção de typecheck no parser multimodal.

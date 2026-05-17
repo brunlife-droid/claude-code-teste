@@ -16,43 +16,60 @@
   --secondary-fg: #1F1300;
   --secondary-soft: #FEF6E4;
 
-  /* Neutrals (warm gray) */
-  --neutral-50:  #FAFAF9;
-  --neutral-100: #F4F4F2;
-  --neutral-200: #E8E8E4;
-  --neutral-300: #D6D6D0;
-  --neutral-400: #A8A8A0;
-  --neutral-500: #71716A;
-  --neutral-600: #54544D;
-  --neutral-700: #3D3D38;
-  --neutral-800: #272724;
-  --neutral-900: #1A1A18;
-  --neutral-950: #0F0F0E;
+  /* Dynamic brand washes */
+  --brand-10: color-mix(in srgb, var(--primary) 10%, #ffffff);
+  --brand-14: color-mix(in srgb, var(--primary) 14%, #ffffff);
+  --brand-18: color-mix(in srgb, var(--primary) 18%, #ffffff);
+  --brand-72: color-mix(in srgb, var(--primary) 72%, #111827);
+  --secondary-12: color-mix(in srgb, var(--secondary) 12%, #ffffff);
+  --secondary-22: color-mix(in srgb, var(--secondary) 22%, #ffffff);
+
+  /* Neutrals (cooler, brighter institutional base) */
+  --neutral-50:  #fbfcff;
+  --neutral-100: #f3f7fb;
+  --neutral-200: #e4edf7;
+  --neutral-300: #cfdae8;
+  --neutral-400: #98a6b7;
+  --neutral-500: #667386;
+  --neutral-600: #4c5868;
+  --neutral-700: #344052;
+  --neutral-800: #1e293b;
+  --neutral-900: #111827;
+  --neutral-950: #0b1120;
 
   /* Surface */
-  --canvas: #FAFAF9;
-  --surface: #FFFFFF;
-  --surface-2: #F7F7F5;
-  --surface-3: #F1F1EE;
-  --border: #E8E8E4;
-  --border-strong: #D6D6D0;
-  --text: #1A1A18;
-  --text-muted: #54544D;
-  --text-subtle: #71716A;
-  --text-faint: #A8A8A0;
+  --canvas: #f7faff;
+  --surface: #ffffff;
+  --surface-2: #f3f7fd;
+  --surface-3: #eaf2fb;
+  --surface-raised: #ffffff;
+  --surface-tint: var(--brand-10);
+  --surface-warm: #fffbf2;
+  --border: #dfe8f3;
+  --border-strong: #c6d4e5;
+  --text: #101828;
+  --text-muted: #475467;
+  --text-subtle: #667085;
+  --text-faint: #98a2b3;
 
   /* Semantic */
-  --success: #15803D;
-  --success-soft: #E8F3EC;
+  --success: #16a34a;
+  --success-soft: #dcfce7;
   --success-fg: #166534;
-  --warning: #B45309;
-  --warning-soft: #FDF1DD;
-  --warning-fg: #92400E;
-  --danger: #B91C1C;
-  --danger-soft: #FBE9E9;
-  --danger-fg: #991B1B;
-  --info: #1E40AF;
-  --info-soft: #EBF0FB;
+  --warning: #d97706;
+  --warning-soft: #fef3c7;
+  --warning-fg: #92400e;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --danger-fg: #991b1b;
+  --info: #2563eb;
+  --info-soft: #dbeafe;
+  --accent-sky: #0284c7;
+  --accent-sky-soft: #e0f2fe;
+  --accent-violet: #7c3aed;
+  --accent-violet-soft: #ede9fe;
+  --accent-rose: #e11d48;
+  --accent-rose-soft: #ffe4e6;
 
   /* Proficiência pedagógica */
   --prof-advanced: #15803D;
@@ -67,17 +84,17 @@
   /* Radii */
   --r-sm: 4px;
   --r-md: 8px;
-  --r-lg: 12px;
-  --r-xl: 16px;
-  --r-2xl: 20px;
+  --r-lg: 8px;
+  --r-xl: 10px;
+  --r-2xl: 14px;
   --r-full: 9999px;
 
   /* Shadows — institucional, sutil */
-  --shadow-xs: 0 1px 2px rgba(15, 15, 14, 0.04);
-  --shadow-sm: 0 1px 2px rgba(15, 15, 14, 0.05), 0 1px 1px rgba(15, 15, 14, 0.03);
-  --shadow-md: 0 2px 4px rgba(15, 15, 14, 0.05), 0 4px 12px rgba(15, 15, 14, 0.04);
-  --shadow-lg: 0 4px 8px rgba(15, 15, 14, 0.06), 0 12px 32px rgba(15, 15, 14, 0.08);
-  --shadow-xl: 0 8px 16px rgba(15, 15, 14, 0.08), 0 24px 60px rgba(15, 15, 14, 0.10);
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 1px rgba(16, 24, 40, 0.03);
+  --shadow-md: 0 8px 24px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 14px 38px rgba(16, 24, 40, 0.12);
+  --shadow-xl: 0 24px 70px rgba(16, 24, 40, 0.16);
 
   /* Spacing — base 4px */
   --space-1: 4px;
@@ -115,10 +132,10 @@
   /* Chart palette */
   --c1: var(--primary);
   --c2: var(--secondary);
-  --c3: #15803D;
-  --c4: #B45309;
-  --c5: #7C3AED;
-  --c6: #0891B2;
+  --c3: #16a34a;
+  --c4: #d97706;
+  --c5: #7c3aed;
+  --c6: #0284c7;
 }
 
 /* Dark mode */
@@ -198,6 +215,9 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-tint: var(--surface-tint);
+  --color-surface-warm: var(--surface-warm);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-text: var(--text);
@@ -225,6 +245,12 @@
   --color-danger-fg: var(--danger-fg);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
+  --color-accent-sky: var(--accent-sky);
+  --color-accent-sky-soft: var(--accent-sky-soft);
+  --color-accent-violet: var(--accent-violet);
+  --color-accent-violet-soft: var(--accent-violet-soft);
+  --color-accent-rose: var(--accent-rose);
+  --color-accent-rose-soft: var(--accent-rose-soft);
 
   --color-prof-advanced: var(--prof-advanced);
   --color-prof-adequate: var(--prof-adequate);
@@ -262,7 +288,8 @@ body {
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   color: var(--text);
-  background: var(--canvas);
+  background:
+    linear-gradient(180deg, var(--brand-10) 0%, var(--canvas) 240px, #ffffff 100%);
 }
 
 button {
@@ -299,6 +326,61 @@ select {
 }
 .scroll-thin::-webkit-scrollbar-thumb:hover {
   background: var(--text-faint);
+}
+
+/* Layout helpers */
+.app-shell {
+  background:
+    linear-gradient(180deg, var(--brand-10) 0, var(--canvas) 34%, #ffffff 100%);
+}
+
+.app-main {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 6%, transparent) 0, transparent 280px),
+    var(--canvas);
+}
+
+.surface-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.9)),
+    var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.surface-card-strong {
+  background:
+    linear-gradient(180deg, #ffffff, color-mix(in srgb, var(--primary) 4%, #ffffff));
+  border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
+  box-shadow: var(--shadow-md);
+}
+
+.soft-band {
+  background:
+    linear-gradient(135deg, var(--brand-10), var(--secondary-12));
+  border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
+}
+
+.lift-on-hover {
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.lift-on-hover:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+  box-shadow: var(--shadow-md);
+}
+
+.section-label {
+  color: var(--text-subtle);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* Animações */

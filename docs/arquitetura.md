@@ -2,7 +2,7 @@
 
 > **Atualizar sempre que uma decisão arquitetural mudar** — nova abstração, nova camada, novo provider, refator estrutural. Não duplicar o ROADMAP; aqui é o **estado real do código**, não o plano.
 >
-> Última atualização: 2026-05-16
+> Última atualização: 2026-05-17
 
 ---
 
@@ -74,6 +74,7 @@ O `CLAUDE.md` continua sendo a documentação humana do workflow; os hooks são 
 ### White-label
 - CSS vars semânticas injetadas via `<style>` no layout raiz, lidas da tabela `tenants`.
 - Sem rebuild por tenant.
+- O visual global deriva dessas vars: `globals.css` expõe washes da marca, superfícies compartilhadas e helpers (`app-shell`, `app-main`, `surface-card`, `surface-card-strong`, `soft-band`, `lift-on-hover`, `section-label`). Componentes base e shells consomem esses helpers para manter Aluno, Professor, Secretaria e Admin consistentes sem hard-code de paleta por tenant.
 
 ### Auditoria
 - `audit_log` e `consent_log` são tabelas obrigatórias. Toda ação sensível vira log (acesso a dado de aluno, envio de mensagem, alerta SRE).

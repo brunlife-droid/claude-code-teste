@@ -2,7 +2,7 @@
 
 > **Atualizar este arquivo sempre que o estado do projeto mudar.** Foto rápida do que está pronto, o que está em andamento e o que ainda não foi tocado.
 >
-> Última atualização: 2026-05-17 (chat multimodal + artefatos de estudo validados em produção)
+> Última atualização: 2026-05-17 (revitalização visual global aplicada)
 
 ---
 
@@ -41,8 +41,9 @@
 - LLM gateway via OpenRouter (Claude Haiku 4.5 primário) — `src/lib/llm/`
 - NextAuth v5 com credenciais demo + página de login
 - Storage abstrato + Vercel Blob (upload de foto no chat)
-- Scaffolding visual ainda contém mocks em várias telas de Aluno, Professor, Secretaria e Admin
+- Scaffolding de conteúdo ainda contém mocks em várias telas de Aluno, Professor, Secretaria e Admin
 - Multi-tenant foundation (middleware + tabela `tenants` + tokens CSS por tenant)
+- **Design system visual revitalizado**: tokens globais, shells, cards, botões, badges, chips e cabeçalhos agora usam superfícies mais luminosas, washes da marca do tenant e acentos de área para reduzir a sensação de app cinza sem perder tom institucional.
 - Deploy Vercel forçado em `gru1` (São Paulo)
 - **Loop do Aluno completo**: chat A2 persiste no DB (conversations + messages), histórico A3 lê do Postgres com agrupamento por data e filtros reais por `?q=`/`?area=`, `?id=` reabre conversa antiga. Graceful sem `DATABASE_URL` (cai pra modo efêmero).
 - **Área do Aluno A1/A4/A5/A6 real**: `/aluno/onboarding` lê dados reais do aluno/escola/turma, grava apelido em `students.nickname` e consentimento em `consent_log`; `/aluno/trilha` calcula progresso por `student_proficiency` + `habilities`; `/aluno/acessibilidade` persiste `students.a11yMode`; `/aluno/mural` lê recados tenant/school/class de `student_announcements` e registra leitura em `student_announcement_reads`, com fallback auditável em `audit_log` enquanto a migration 0002 não estiver aplicada.
@@ -79,7 +80,7 @@
 
 ## Próximos passos sugeridos (em discussão)
 
-Ver `docs/ROADMAP.md` Fase 1 — o foco natural agora é fechar o loop do Aluno (chat real + persistência + histórico do DB).
+Ver `docs/ROADMAP.md` Fase 1 — depois do chat multimodal e estudo ativo, o foco natural é persistência dedicada/versionamento dos artefatos, melhorias de acessibilidade multimodal e fechamento do canal WhatsApp.
 
 ## Decisões em aberto
 

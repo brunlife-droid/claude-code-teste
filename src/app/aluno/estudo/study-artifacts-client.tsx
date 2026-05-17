@@ -121,8 +121,8 @@ export function StudyArtifactsClient({
         </header>
 
         <div className="mt-7 grid gap-5 lg:grid-cols-[minmax(0,1fr)_310px]">
-          <section className="border-border bg-surface rounded-lg border">
-            <div className="border-border flex flex-col gap-4 border-b p-5">
+          <section className="surface-card-strong rounded-lg">
+            <div className="border-border/80 flex flex-col gap-4 border-b p-5">
               <div className="flex flex-wrap gap-2">
                 {MODES.map((mode) => {
                   const Icon = mode.icon;
@@ -163,7 +163,7 @@ export function StudyArtifactsClient({
                       ? "Tema opcional para orientar a conversa atual"
                       : "Digite o tema: frações, fotossíntese, texto argumentativo..."
                   }
-                  className="border-border-strong bg-surface placeholder:text-text-faint focus:border-primary h-11 rounded-lg border px-3 text-[14px] outline-none transition-colors"
+                  className="border-border-strong bg-surface-raised placeholder:text-text-faint focus:border-primary focus:shadow-[0_0_0_3px_var(--primary-soft)] h-11 rounded-lg border px-3 text-[14px] outline-none transition-colors"
                 />
                 <button
                   type="button"
@@ -196,8 +196,8 @@ export function StudyArtifactsClient({
             </div>
           </section>
 
-          <aside className="border-border bg-surface h-fit rounded-lg border">
-            <div className="border-border border-b p-4">
+          <aside className="surface-card h-fit rounded-lg">
+            <div className="border-border/80 border-b p-4">
               <div className="text-sm font-semibold">Recentes</div>
               <div className="text-text-muted mt-1 text-xs">
                 Materiais gerados para estudar depois.
@@ -215,8 +215,9 @@ export function StudyArtifactsClient({
                     type="button"
                     onClick={() => setCurrent(artifact)}
                     className={cn(
-                      "hover:bg-surface-2 flex w-full flex-col gap-1 rounded-md px-3 py-3 text-left transition-colors",
-                      current?.id === artifact.id && "bg-surface-2",
+                      "hover:bg-surface-tint flex w-full flex-col gap-1 rounded-md border border-transparent px-3 py-3 text-left transition-colors",
+                      current?.id === artifact.id &&
+                        "border-primary-border bg-primary-soft",
                     )}
                   >
                     <span className="text-[13px] font-medium">
@@ -294,7 +295,7 @@ function FlashcardViewer({
       <button
         type="button"
         onClick={() => setRevealed((value) => !value)}
-        className="border-border bg-surface-2 flex flex-1 flex-col justify-center rounded-lg border p-8 text-left"
+        className="soft-band flex flex-1 flex-col justify-center rounded-lg p-8 text-left shadow-[var(--shadow-sm)]"
       >
         <div className="text-text-faint text-xs font-semibold uppercase tracking-widest">
           {revealed ? "Resposta" : "Frente"}
@@ -365,7 +366,7 @@ function QuizViewer({
 
   return (
     <div className="min-h-[430px]">
-      <div className="border-border bg-surface-2 rounded-lg border p-5">
+      <div className="soft-band rounded-lg p-5 shadow-[var(--shadow-sm)]">
         <div className="flex items-center justify-between gap-3">
           <div className="text-text-faint text-xs font-semibold uppercase tracking-widest">
             Questão {index + 1}/{content.questions.length}
@@ -392,7 +393,7 @@ function QuizViewer({
                 setAnswers((prev) => ({ ...prev, [index]: optionIndex }))
               }
               className={cn(
-                "border-border-strong bg-surface hover:bg-surface-2 flex min-h-12 items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
+                "border-border-strong bg-surface-raised hover:bg-surface-tint flex min-h-12 items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm shadow-[var(--shadow-xs)] transition-colors",
                 answered && correct && "border-success bg-success-soft",
                 answered && picked && !correct && "border-danger bg-danger-soft",
               )}
@@ -443,7 +444,7 @@ function SummaryViewer({
 }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.9fr)]">
-      <div className="border-border bg-surface-2 rounded-lg border p-5">
+      <div className="surface-card-strong rounded-lg p-5">
         <div className="text-text-faint text-xs font-semibold uppercase tracking-widest">
           Resumo
         </div>
@@ -451,7 +452,7 @@ function SummaryViewer({
           {content.summary}
         </p>
         {content.practicePrompt && (
-          <div className="border-border bg-surface mt-5 rounded-lg border p-4">
+          <div className="border-primary-border bg-primary-soft mt-5 rounded-lg border p-4">
             <div className="text-sm font-semibold">Pergunta de treino</div>
             <div className="text-text-muted mt-1 text-sm">
               {content.practicePrompt}
@@ -461,7 +462,7 @@ function SummaryViewer({
       </div>
 
       <div className="space-y-4">
-        <section className="border-border rounded-lg border p-4">
+        <section className="surface-card rounded-lg p-4">
           <div className="text-sm font-semibold">Pontos-chave</div>
           <ul className="mt-3 space-y-2 text-sm">
             {content.keyPoints.map((point) => (
@@ -472,7 +473,7 @@ function SummaryViewer({
             ))}
           </ul>
         </section>
-        <section className="border-border rounded-lg border p-4">
+        <section className="surface-card rounded-lg p-4">
           <div className="text-sm font-semibold">Passos de estudo</div>
           <ol className="mt-3 space-y-2 text-sm">
             {content.studySteps.map((step, index) => (
@@ -492,7 +493,7 @@ function SummaryViewer({
 
 function EmptyArtifactState({ tenant }: { tenant: Props["tenant"] }) {
   return (
-    <div className="border-border flex min-h-[420px] flex-col items-center justify-center rounded-lg border border-dashed px-6 text-center">
+    <div className="soft-band flex min-h-[420px] flex-col items-center justify-center rounded-lg border-dashed px-6 text-center shadow-[var(--shadow-sm)]">
       <div
         className="flex size-12 items-center justify-center rounded-lg"
         style={{ background: tenant.primarySoft, color: tenant.primary }}
