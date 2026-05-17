@@ -11,6 +11,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "./client";
 import { students } from "./schema";
 import { ensureDemoStudent } from "./seed-demo";
+import { allowsMockFallbacks } from "@/lib/runtime/mode";
 
 const DEMO_USER_ID = "u-joao";
 
@@ -20,7 +21,7 @@ export async function resolveStudentId(input: {
 }): Promise<string | null> {
   if (!process.env.DATABASE_URL) return null;
 
-  if (input.userId === DEMO_USER_ID) {
+  if (input.userId === DEMO_USER_ID && allowsMockFallbacks()) {
     return ensureDemoStudent();
   }
 

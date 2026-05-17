@@ -2,9 +2,11 @@ import type { StorageProvider, UploadOptions } from "./types";
 import { mockStorageProvider } from "./providers/mock";
 import { hasS3Config, s3StorageProvider } from "./providers/s3";
 import { isTenantStoragePath, pathnameFromStorageUrl } from "./url";
+import { assertMockFallbackAllowed } from "@/lib/runtime/mode";
 
 function pickProvider(): StorageProvider {
   if (hasS3Config()) return s3StorageProvider;
+  assertMockFallbackAllowed("Storage mock", "variaveis S3 ausentes");
   return mockStorageProvider;
 }
 

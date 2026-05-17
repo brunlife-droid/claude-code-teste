@@ -21,12 +21,20 @@ import { loadRoute, loadActivePrompt } from "./config";
 import { renderPrompt } from "./prompts/student-tutor";
 import { mockComplete, mockStream } from "./providers/mock";
 import { openrouterComplete, openrouterStream } from "./providers/openrouter";
+import {
+  allowsMockFallbacks,
+  assertMockFallbackAllowed,
+} from "@/lib/runtime/mode";
 
-function shouldUseMock(provider: string): boolean {
-  if (provider === "mock") return true;
-  if (provider === "openrouter" && !process.env.OPENROUTER_API_KEY) return true;
-  if (provider === "openai" && !process.env.OPENAI_API_KEY) return true;
-  return false;
+function mockReason(provider: string): string | null {
+  if (provider === "mock") return "rota configurada para provider mock";
+  if (provider === "openrouter" && !process.env.OPENROUTER_API_KEY) {
+    return "OPENROUTER_API_KEY ausente";
+  }
+  if (provider === "openai" && !process.env.OPENAI_API_KEY) {
+    return "OPENAI_API_KEY ausente";
+  }
+  return null;
 }
 
 const DEFAULTS_BY_CAPABILITY: Record<string, Record<string, string>> = {
@@ -100,7 +108,9 @@ export async function complete(
   const { req: enriched, promptVersion } = await injectSystemPrompt(req);
   const withDefaults = withRouteDefaults(enriched, route);
 
-  if (shouldUseMock(route.provider)) {
+  const initialMockReason = mockReason(route.provider);
+  if (initialMockReason) {
+    assertMockFallbackAllowed("LLM mock", initialMockReason);
     const result = await mockComplete(withDefaults);
     return { ...result, promptVersion: promptVersion ?? result.promptVersion };
   }
@@ -111,11 +121,16 @@ export async function complete(
       return { ...result, promptVersion };
     } catch (err) {
       console.error("openrouter failed, falling back to mock", err);
+      if (!allowsMockFallbacks()) throw err;
       const result = await mockComplete(withDefaults);
       return { ...result, promptVersion: promptVersion ?? result.promptVersion };
     }
   }
 
+  assertMockFallbackAllowed(
+    "LLM mock",
+    `provider sem implementacao real: ${route.provider}`,
+  );
   const result = await mockComplete(withDefaults);
   return { ...result, promptVersion: promptVersion ?? result.promptVersion };
 }
@@ -127,7 +142,9 @@ export async function* stream(
   const { req: enriched } = await injectSystemPrompt(req);
   const withDefaults = withRouteDefaults(enriched, route);
 
-  if (shouldUseMock(route.provider)) {
+  const initialMockReason = mockReason(route.provider);
+  if (initialMockReason) {
+    assertMockFallbackAllowed("LLM mock", initialMockReason);
     yield* mockStream(withDefaults);
     return;
   }
@@ -138,10 +155,15 @@ export async function* stream(
       return;
     } catch (err) {
       console.error("openrouter stream failed, falling back to mock", err);
+      if (!allowsMockFallbacks()) throw err;
       yield* mockStream(withDefaults);
       return;
     }
   }
 
+  assertMockFallbackAllowed(
+    "LLM mock",
+    `provider sem implementacao real: ${route.provider}`,
+  );
   yield* mockStream(withDefaults);
 }

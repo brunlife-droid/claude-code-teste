@@ -24,6 +24,7 @@ import {
 } from "@/lib/db/schema";
 import { ensureNetworkSeeded } from "@/lib/db/seed-network";
 import { ALUNOS_7A, HABILIDADES_BNCC } from "@/lib/mocks";
+import { allowsMockFallbacks } from "@/lib/runtime/mode";
 
 function dbAvailable(): boolean {
   return !!process.env.DATABASE_URL;
@@ -95,7 +96,11 @@ export async function loadTeacherContext(input: {
 }
 
 function isDemoTeacher(input: { userId: string; tenantId: string }): boolean {
-  return input.userId === DEMO_TEACHER_ID && input.tenantId === DEMO_TENANT_ID;
+  return (
+    allowsMockFallbacks() &&
+    input.userId === DEMO_TEACHER_ID &&
+    input.tenantId === DEMO_TENANT_ID
+  );
 }
 
 function demoTeacherContext(): TeacherContext {
@@ -797,11 +802,16 @@ export async function loadClassRoster(input: {
 }
 
 function isDemoClass(input: { tenantId: string; classId: string }): boolean {
-  return input.tenantId === DEMO_TENANT_ID && input.classId === DEMO_CLASS_ID;
+  return (
+    allowsMockFallbacks() &&
+    input.tenantId === DEMO_TENANT_ID &&
+    input.classId === DEMO_CLASS_ID
+  );
 }
 
 function hasDemoClass(input: { tenantId: string; classIds: string[] }): boolean {
   return (
+    allowsMockFallbacks() &&
     input.tenantId === DEMO_TENANT_ID && input.classIds.includes(DEMO_CLASS_ID)
   );
 }

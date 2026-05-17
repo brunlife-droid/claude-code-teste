@@ -10,6 +10,7 @@ import {
 import { TENANTS } from "@/lib/tenants/config";
 import { HABILIDADES_BNCC } from "@/lib/mocks";
 import type { NexusSessionUser } from "@/lib/auth/types";
+import { allowsMockFallbacks } from "@/lib/runtime/mode";
 
 export const DEMO_TENANT_ID = "alfenas";
 export const DEMO_SCHOOL_ID = "school-demo-alfenas";
@@ -19,6 +20,7 @@ export async function ensureDemoClassScope(
   classId: string,
   tenantId: string,
 ) {
+  if (!allowsMockFallbacks()) return;
   if (classId !== DEMO_CLASS_ID || tenantId !== DEMO_TENANT_ID) return;
   const tenant = TENANTS.alfenas;
 

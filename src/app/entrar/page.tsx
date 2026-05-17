@@ -3,9 +3,10 @@ import { LoginForm } from "./login-form";
 import { getCurrentTenant } from "@/lib/tenants/server";
 import { PrefLogo } from "@/components/tenant";
 import { DEMO_USERS } from "@/lib/auth";
+import { shouldShowDemoCredentials } from "@/lib/runtime/mode";
 
 export const metadata: Metadata = {
-  title: "Entrar · Nexus Education",
+  title: "Entrar - Nexus Education",
   robots: { index: false, follow: false },
 };
 
@@ -21,6 +22,7 @@ export default async function EntrarPage({
 }) {
   const tenant = await getCurrentTenant();
   const params = await searchParams;
+  const showDemo = shouldShowDemoCredentials();
 
   return (
     <div className="bg-canvas flex min-h-screen items-center justify-center px-6 py-12">
@@ -35,32 +37,30 @@ export default async function EntrarPage({
             Acesse a plataforma da {tenant.short}.
           </p>
 
-          <LoginForm
-            callbackUrl={params.callbackUrl}
-            error={params.error}
-          />
+          <LoginForm callbackUrl={params.callbackUrl} error={params.error} />
         </div>
 
-        {/* Credenciais de demo (Fase 0) */}
-        <details className="border-border bg-surface mt-6 rounded-lg border p-4">
-          <summary className="text-text-muted cursor-pointer text-xs font-medium">
-            Contas de demonstração (Fase 0)
-          </summary>
-          <div className="mt-3 flex flex-col gap-2 text-[11.5px]">
-            {DEMO_USERS.map((u) => (
-              <div
-                key={u.id}
-                className="bg-surface-2 flex flex-col gap-0.5 rounded-md p-2"
-                style={{ fontFamily: "var(--font-mono)" }}
-              >
-                <span>
-                  <b>{u.role}</b> · {u.email}
-                </span>
-                <span className="text-text-faint">senha: {u.password}</span>
-              </div>
-            ))}
-          </div>
-        </details>
+        {showDemo && (
+          <details className="border-border bg-surface mt-6 rounded-lg border p-4">
+            <summary className="text-text-muted cursor-pointer text-xs font-medium">
+              Contas de demonstracao
+            </summary>
+            <div className="mt-3 flex flex-col gap-2 text-[11.5px]">
+              {DEMO_USERS.map((u) => (
+                <div
+                  key={u.id}
+                  className="bg-surface-2 flex flex-col gap-0.5 rounded-md p-2"
+                  style={{ fontFamily: "var(--font-mono)" }}
+                >
+                  <span>
+                    <b>{u.role}</b> - {u.email}
+                  </span>
+                  <span className="text-text-faint">senha: {u.password}</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
       </div>
     </div>
   );

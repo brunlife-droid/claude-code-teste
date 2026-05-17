@@ -6,6 +6,44 @@
 
 ---
 
+## 2026-05-17 - Infra de producao Railway, proxy Next 16 e RLS
+
+- `src/middleware.ts` foi migrado para `src/proxy.ts`, com export `proxy`, seguindo a convencao do Next.js 16 e removendo o aviso de build sobre middleware legado.
+- O cliente Postgres passou a aplicar `app.tenant_id` automaticamente por request quando `getCurrentTenant()` ou `resolveTenantId()` resolvem o tenant, usando contexto async e resetando a sessao do pool depois de cada query.
+- A migration `9999_rls_policies.sql` agora cobre as tabelas tenant-scoped mais recentes e aplica `FORCE ROW LEVEL SECURITY`, reduzindo o risco de a conexao owner bypassar as politicas.
+- Seeds e fallbacks demo de aluno/professor deixam de rodar em `NODE_ENV=production`, salvo `NEXUS_DEMO_MODE=true` ou `NEXUS_ALLOW_MOCKS=true`.
+- Auth por credenciais reais agora resolve o tenant da request antes de consultar `memberships`, mantendo login compativel com RLS por tenant.
+
+Consequencia: a operacao em Railway fica mais alinhada ao alvo de producao real: Next 16 sem middleware legado, RLS efetivamente acoplada ao tenant da request e mocks/dados demo bloqueados por padrao em producao.
+
+---
+
+## 2026-05-17 - CRUD operacional inicial da Secretaria
+
+- `/secretaria/rede` ganhou cadastro real de escola e importacao CSV de alunos; o importador aceita colunas `nome`, `escola`, `turma`, `serie`, `cpf`, `nascimento` e `bolsa_familia`, criando escola/turma ausentes quando necessario.
+- `/secretaria/turmas` ganhou formulario para criar turma vinculada a escola do tenant.
+- `/secretaria/alunos` ganhou cadastro manual de aluno, derivando escola pela turma selecionada e evitando duplicidade por CPF ou nome na mesma turma.
+- `/secretaria/usuarios` ganhou criacao/atualizacao de usuario com membership por papel, escopo de escola/turma e senha provisoria para login por credenciais enquanto convites por e-mail ainda nao existem.
+- As novas Server Actions (`createSchool`, `createClass`, `createStudent`, `createUserMembership`, `importStudentsCsv`) validam `tenantId`, revalidam as telas da Secretaria e registram eventos em `audit_log`.
+
+Consequencia: a Secretaria passa a operar a base minima da rede sem depender de SQL manual; ainda faltam edicao/exclusao controlada, convites por e-mail, validacao visual de erros e importadores para usuarios/turmas completos.
+
+---
+
+## 2026-05-17 - Guardrails de producao, diario e Secretaria real
+
+- Criada a camada `src/lib/runtime/mode.ts` para separar dev/demo de producao: fallbacks mock de LLM, embeddings e storage agora sao bloqueados em runtime de producao, salvo `NEXUS_ALLOW_MOCKS=true` ou `NEXUS_DEMO_MODE=true`.
+- Auth passou a tentar usuarios reais do banco antes das contas demo, com `users.password_hash`, hash `scrypt`, auditoria de login e credenciais demo escondidas fora de dev/demo.
+- Adicionado `writeAuditLog()` como helper central best-effort e ligado em login, alteracoes de LLM admin, diario pedagogico e comunicados da Secretaria.
+- A sidebar do aluno deixou a lista fixa de conversas recentes e agora carrega `conversations` reais, alem de mostrar o contador real de comunicados nao lidos.
+- `/professor/diario` agora salva rascunhos em `pedagogical_diary_entries`, lista entradas da turma, permite assinatura e audita as duas acoes.
+- As telas principais da Secretaria passaram a ler dados do Postgres por tenant: dashboard, rede, escolas, turmas, alunos, usuarios, mural e preview de relatorio. O mural cria comunicados reais em `student_announcements` e calcula leitura por `student_announcement_reads`.
+- Criada a migration `0004_production_foundation.sql` para `users.password_hash` e indices auxiliares de mensagens/auditoria, incluida no fluxo idempotente de deploy.
+
+Consequencia: o app fica mais seguro para operacao Railway/production, reduz mocks silenciosos e transforma Secretaria/diario em fluxos reais sem bloquear os proximos CRUDs completos.
+
+---
+
 ## 2026-05-17 — Migração do storage para Railway Bucket/S3
 
 - Criado e aplicado um Railway Bucket S3-compatível no projeto `dynamic-essence`, ligado ao serviço `nexus_education` com variáveis AWS (`AWS_ENDPOINT_URL`, `AWS_S3_BUCKET_NAME`, `AWS_DEFAULT_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`).

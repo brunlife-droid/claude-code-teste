@@ -30,6 +30,7 @@ import {
 import { ensureNetworkSeeded } from "@/lib/db/seed-network";
 import { resolveStudentId } from "@/lib/db/student-resolver";
 import { COMUNICADOS, TRILHA } from "@/lib/mocks";
+import { allowsMockFallbacks } from "@/lib/runtime/mode";
 
 const DEMO_TENANT_ID = "alfenas";
 const DEMO_USER_ID = "u-joao";
@@ -100,12 +101,12 @@ export async function loadStudentContext(input: {
   userId: string;
   tenantId: string;
 }): Promise<StudentContext> {
-  if (!dbAvailable()) return fallbackStudentContext();
+  if (!dbAvailable()) return safeStudentContext();
 
   try {
     await ensureNetworkSeeded();
     const studentId = await resolveStudentId(input);
-    if (!studentId) return fallbackStudentContext(input);
+    if (!studentId) return safeStudentContext(input);
 
     const [student] = await db()
       .select({
@@ -125,7 +126,7 @@ export async function loadStudentContext(input: {
       .where(and(eq(students.id, studentId), eq(students.tenantId, input.tenantId)))
       .limit(1);
 
-    if (!student) return fallbackStudentContext(input);
+    if (!student) return safeStudentContext(input);
 
     const [consent] = await db()
       .select({
@@ -160,7 +161,7 @@ export async function loadStudentContext(input: {
     };
   } catch (err) {
     console.error("[student/queries] loadStudentContext failed:", err);
-    return fallbackStudentContext(input);
+    return safeStudentContext(input);
   }
 }
 
@@ -168,12 +169,12 @@ export async function loadStudentLearningPath(input: {
   userId: string;
   tenantId: string;
 }): Promise<LearningPath> {
-  if (!dbAvailable()) return fallbackLearningPath();
+  if (!dbAvailable()) return safeLearningPath();
 
   try {
     await ensureNetworkSeeded();
     const studentId = await resolveStudentId(input);
-    if (!studentId) return fallbackLearningPath();
+    if (!studentId) return safeLearningPath();
 
     const rows = await db()
       .select({
@@ -193,7 +194,7 @@ export async function loadStudentLearningPath(input: {
       )
       .orderBy(asc(habilities.area), asc(studentProficiency.habilityCode));
 
-    if (rows.length === 0) return fallbackLearningPath();
+    if (rows.length === 0) return safeLearningPath();
 
     const areas = new Map<string, typeof rows>();
     for (const row of rows) {
@@ -247,7 +248,7 @@ export async function loadStudentLearningPath(input: {
     };
   } catch (err) {
     console.error("[student/queries] loadStudentLearningPath failed:", err);
-    return fallbackLearningPath();
+    return safeLearningPath();
   }
 }
 
@@ -256,14 +257,14 @@ export async function loadStudentAnnouncements(input: {
   tenantId: string;
   filter?: string;
 }): Promise<StudentAnnouncement[]> {
-  if (!dbAvailable()) return fallbackAnnouncements(input.filter);
+  if (!dbAvailable()) return safeAnnouncements(input.filter);
 
   try {
     await ensureNetworkSeeded();
     await ensureDemoAnnouncements(input.tenantId);
 
     const context = await loadStudentContext(input);
-    if (!context.studentId) return fallbackAnnouncements(input.filter);
+    if (!context.studentId) return safeAnnouncements(input.filter);
 
     const now = new Date();
     const rows = await db()
@@ -316,8 +317,30 @@ export async function loadStudentAnnouncements(input: {
   } catch (err) {
     console.error("[student/queries] loadStudentAnnouncements failed:", err);
     const readState = await loadFallbackReadState(input);
-    return fallbackAnnouncements(input.filter, readState);
+    return safeAnnouncements(input.filter, readState);
   }
+}
+
+function safeStudentContext(input?: {
+  userId: string;
+  tenantId: string;
+}): StudentContext {
+  return allowsMockFallbacks()
+    ? fallbackStudentContext(input)
+    : emptyStudentContext();
+}
+
+function safeLearningPath(): LearningPath {
+  return allowsMockFallbacks() ? fallbackLearningPath() : emptyLearningPath();
+}
+
+function safeAnnouncements(
+  filter?: string,
+  readState?: Map<string, { read: boolean; confirmed: boolean }>,
+): StudentAnnouncement[] {
+  return allowsMockFallbacks()
+    ? fallbackAnnouncements(filter, readState)
+    : filterAnnouncements([], filter);
 }
 
 function fallbackStudentContext(input?: {
@@ -335,6 +358,24 @@ function fallbackStudentContext(input?: {
     classId: isDemo ? DEMO_CLASS_ID : null,
     className: "7º A",
     grade: "7",
+    a11yMode: "none",
+    hasActiveConsent: false,
+    guardianName: null,
+    consentedAt: null,
+  };
+}
+
+function emptyStudentContext(): StudentContext {
+  return {
+    source: "fallback",
+    studentId: null,
+    fullName: "Aluno",
+    nickname: "Aluno",
+    schoolId: null,
+    schoolName: "Sem escola vinculada",
+    classId: null,
+    className: "Sem turma vinculada",
+    grade: "-",
     a11yMode: "none",
     hasActiveConsent: false,
     guardianName: null,
@@ -369,6 +410,22 @@ function fallbackLearningPath(): LearningPath {
     achievementBody:
       "A trilha mostra um bom avanço em habilidades matemáticas do bimestre.",
     areas,
+  };
+}
+
+function emptyLearningPath(): LearningPath {
+  return {
+    source: "fallback",
+    mastered: 0,
+    total: 0,
+    percent: 0,
+    nextArea: "Trilha indisponivel",
+    nextSkill: "Aguardando dados pedagogicos",
+    nextHint: "Assim que a turma tiver habilidades cadastradas, a trilha aparece aqui.",
+    achievementTitle: "Dados em preparacao",
+    achievementBody:
+      "Ainda nao ha proficiencias vinculadas a este aluno em producao.",
+    areas: [],
   };
 }
 
@@ -438,6 +495,7 @@ async function loadFallbackReadState(input: {
 }
 
 async function ensureDemoAnnouncements(tenantId: string): Promise<void> {
+  if (!allowsMockFallbacks()) return;
   if (tenantId !== DEMO_TENANT_ID) return;
 
   await db()

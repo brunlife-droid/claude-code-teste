@@ -20,6 +20,7 @@ import {
   users,
 } from "./schema";
 import { ALUNOS_7A, HABILIDADES_BNCC } from "@/lib/mocks";
+import { allowsMockFallbacks } from "@/lib/runtime/mode";
 
 const TENANT_ID = "alfenas";
 const SCHOOL_ID = "school-demo-alfenas";
@@ -60,7 +61,7 @@ const DEMO_STUDENT_USERS = [
 let seeded = false;
 
 export async function ensureNetworkSeeded(): Promise<void> {
-  if (!process.env.DATABASE_URL || seeded) return;
+  if (!process.env.DATABASE_URL || seeded || !allowsMockFallbacks()) return;
   try {
     const d = db();
 

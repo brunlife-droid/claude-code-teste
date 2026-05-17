@@ -15,6 +15,7 @@ import {
   habilities,
 } from "@/lib/db/schema";
 import { HABILIDADES_BNCC } from "@/lib/mocks";
+import { allowsMockFallbacks } from "@/lib/runtime/mode";
 
 function dbAvailable(): boolean {
   return !!process.env.DATABASE_URL;
@@ -56,7 +57,9 @@ export async function loadClassFocus(input: {
 }
 
 export async function loadAvailableHabilities(): Promise<FocusSkill[]> {
-  if (!dbAvailable()) return demoAvailableHabilities();
+  if (!dbAvailable()) {
+    return allowsMockFallbacks() ? demoAvailableHabilities() : [];
+  }
   try {
     const rows = await db()
       .select({
@@ -69,11 +72,14 @@ export async function loadAvailableHabilities(): Promise<FocusSkill[]> {
     return mergeWithDemoHabilities(rows);
   } catch (err) {
     console.error("[material-queries] loadAvailableHabilities failed:", err);
-    return demoAvailableHabilities();
+    return allowsMockFallbacks() ? demoAvailableHabilities() : [];
   }
 }
 
 function mergeWithDemoHabilities(rows: FocusSkill[]): FocusSkill[] {
+  if (!allowsMockFallbacks()) {
+    return rows.sort((a, b) => a.code.localeCompare(b.code));
+  }
   const byCode = new Map<string, FocusSkill>();
   for (const h of demoAvailableHabilities()) byCode.set(h.code, h);
   for (const h of rows) byCode.set(h.code, h);

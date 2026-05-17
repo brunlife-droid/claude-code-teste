@@ -134,6 +134,7 @@ export const users = pgTable(
   {
     id: text("id").primaryKey(),
     email: text("email"),
+    passwordHash: text("password_hash"),
     emailVerified: timestamp("email_verified"),
     name: text("name").notNull(),
     image: text("image"),

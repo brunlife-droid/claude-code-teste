@@ -20,14 +20,21 @@ BEGIN
     'classes',
     'students',
     'student_proficiency',
+    'student_announcements',
+    'student_announcement_reads',
+    'student_artifacts',
+    'teacher_artifacts',
+    'pedagogical_diary_entries',
     'conversations',
     'messages',
+    'class_focus_skills',
     'consent_log',
     'sre_cases'
   ]
   LOOP
     IF to_regclass(tbl) IS NOT NULL THEN
       EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', tbl);
+      EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', tbl);
       IF NOT EXISTS (
         SELECT 1
         FROM pg_policies
@@ -51,6 +58,7 @@ END $$;
 DO $$ BEGIN
   IF to_regclass('audit_log') IS NOT NULL THEN
     ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE audit_log FORCE ROW LEVEL SECURITY;
     IF NOT EXISTS (
       SELECT 1
       FROM pg_policies
@@ -69,6 +77,7 @@ END $$;
 DO $$ BEGIN
   IF to_regclass('documents') IS NOT NULL THEN
     ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE documents FORCE ROW LEVEL SECURITY;
     IF NOT EXISTS (
       SELECT 1
       FROM pg_policies
@@ -86,6 +95,7 @@ END $$;
 DO $$ BEGIN
   IF to_regclass('chunks') IS NOT NULL THEN
     ALTER TABLE chunks ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE chunks FORCE ROW LEVEL SECURITY;
     IF NOT EXISTS (
       SELECT 1
       FROM pg_policies

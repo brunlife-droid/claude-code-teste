@@ -1,5 +1,20 @@
 # Arquitetura
 
+## Atualizacao Codex - 2026-05-17
+
+- Auth deixou de ser apenas whitelist demo: `src/lib/auth/db-users.ts` valida `users.password_hash` com `src/lib/auth/password.ts` (`scrypt`) e so cai nas contas demo quando o runtime permite dev/demo.
+- `src/lib/runtime/mode.ts` centraliza guardrails de producao. LLM mock, embeddings mock e storage mock chamam `assertMockFallbackAllowed()` antes de mascarar falha de configuracao.
+- `src/lib/audit/log.ts` e a porta central de escrita em `audit_log`; novas features devem usar esse helper para login, dados de aluno, mensagens, uploads, LLM, administracao e comunicados.
+- `src/lib/teacher/diary.ts` agora contem leitura e Server Actions de diario pedagogico (`saveDiaryDraft`, `signDiaryEntry`) sobre `pedagogical_diary_entries`, sempre filtrando `tenantId` e turma.
+- `src/lib/secretaria/queries.ts` virou a camada operacional da Secretaria: KPIs, escolas, turmas, alunos, usuarios e comunicados. `src/lib/secretaria/actions.ts` cria comunicados reais em `student_announcements`.
+- `src/lib/secretaria/actions.ts` tambem concentra o CRUD operacional inicial da rede: criar escola, criar turma, criar aluno, criar/atualizar usuario+membership e importar alunos via CSV. Todas as acoes validam tenant, revalidam telas da Secretaria e escrevem `audit_log`.
+- Migration `0004_production_foundation.sql` entra no fluxo `scripts/apply-sql-migrations.mjs` antes das politicas RLS para criar `users.password_hash` e indices auxiliares.
+- Next 16 agora usa `src/proxy.ts` com export `proxy`; o antigo `src/middleware.ts` foi removido.
+- `src/lib/db/rls-context.ts` guarda o tenant resolvido por request e `src/lib/db/client.ts` aplica `app.tenant_id` no mesmo client do pool antes das queries, resetando em seguida.
+- `9999_rls_policies.sql` aplica `FORCE ROW LEVEL SECURITY` nas tabelas tenant-scoped, incluindo anuncios, artefatos, diario e foco de turma.
+- Seeds/fallbacks demo de aluno/professor sao bloqueados em producao salvo `NEXUS_DEMO_MODE=true` ou `NEXUS_ALLOW_MOCKS=true`.
+- Build validado com Next 16 via `next build --webpack`; Turbopack neste Windows falhou antes da compilacao por `Acesso negado` ao spawnar processo de PostCSS, nao por erro da aplicacao.
+
 > **Atualizar sempre que uma decisão arquitetural mudar** — nova abstração, nova camada, novo provider, refator estrutural. Não duplicar o ROADMAP; aqui é o **estado real do código**, não o plano.
 >
 > Última atualização: 2026-05-17
@@ -38,8 +53,8 @@ src/
     llm/              # gateway + providers + capabilities + prompts
     auth/             # NextAuth config
     storage/          # abstração Railway Bucket/S3
-    tenants/          # middleware helpers + config
-  middleware.ts       # ⚠️ em Next 16 será migrado para `proxy.ts`
+    tenants/          # tenant helpers + config
+  proxy.ts            # Next 16 request proxy: tenant cookie/header + pathname
 drizzle/migrations/   # SQL versionado
 docs/                 # ROADMAP, contexto, arquitetura, histórico
 .claude/
@@ -59,7 +74,7 @@ O `CLAUDE.md` continua sendo a documentação humana do workflow; os hooks são 
 ## Decisões arquiteturais ativas
 
 ### Multi-tenancy
-- **Single Postgres + `tenant_id` em todas as tabelas + Postgres RLS** como segunda barreira (políticas estão no SQL mas conexão atual bypassa — pendente).
+- **Single Postgres + `tenant_id` em todas as tabelas + Postgres RLS** como segunda barreira. O tenant resolvido na request entra em `app.tenant_id` no pool Postgres; as tabelas tenant-scoped usam `FORCE ROW LEVEL SECURITY`.
 - **Não** schema-per-tenant.
 - Resolução de tenant por subdomínio em prod (`alfenas.nexus.edu`), por path/header em dev.
 - `getCurrentTenant()` (em `src/lib/tenants/server.ts`) carrega a row do Postgres via `loadTenantFromDb()` (cacheado por request com `cache()` do React). `ensureTenantsSeeded()` faz o INSERT idempotente das 3 prefeituras no primeiro hit por instância.
@@ -115,8 +130,8 @@ O `CLAUDE.md` continua sendo a documentação humana do workflow; os hooks são 
 - **Mapa de papéis → home**: `aluno/responsavel → /aluno/chat`, `professor/coordenador/diretor/orientador → /professor`, `secretaria → /secretaria`, `admin_nexus → /admin`.
 - **Resolução de `studentId`** centralizada em `src/lib/db/student-resolver.ts` — para o demo `u-joao`, dispara seed idempotente; pros demais, lookup em `students` por `(userId, tenantId)`. Retorna `null` se nada bater — chamador trata como efêmero.
 
-### Headers do middleware
-`src/middleware.ts` injeta dois headers em toda request: `x-tenant-id` (tenant resolvido) e `x-pathname` (path original) — Server Components leem via `headers()`.
+### Headers do proxy
+`src/proxy.ts` injeta dois headers em toda request: `x-tenant-id` (tenant resolvido) e `x-pathname` (path original) — Server Components leem via `headers()`.
 
 ### Queries por papel (Aluno / Professor / Secretaria / Admin)
 Pra evitar Server Components fazerem Drizzle direto, cada área tem um módulo de queries:
@@ -189,6 +204,5 @@ Convenção pra nova capability: 1) adicionar rota em `routes.ts` (fallback hard
 
 ## Pontos de atenção / dívida técnica
 
-- `src/middleware.ts` precisa virar `proxy.ts` (deprecação Next 16).
-- RLS escrita no SQL mas sem testes que validem isolamento.
+- RLS agora e aplicada pelo contexto de request, mas ainda falta teste automatizado de isolamento entre tenants.
 - Mock data ainda em várias telas — migrar pra DB conforme features fecham.

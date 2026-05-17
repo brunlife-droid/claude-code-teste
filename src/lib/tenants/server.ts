@@ -6,6 +6,7 @@ import {
   type TenantId,
 } from "./config";
 import { loadTenantFromDb } from "./db";
+import { setRlsTenantId } from "@/lib/db/rls-context";
 
 /**
  * Lê o tenant atual a partir do header injetado pelo middleware
@@ -20,14 +21,19 @@ export async function getCurrentTenant(): Promise<Tenant> {
   return loadTenantFromDb(id);
 }
 
-async function resolveTenantId(): Promise<TenantId> {
+export async function resolveTenantId(): Promise<TenantId> {
   const headerStore = await headers();
   const fromHeader = headerStore.get("x-tenant-id");
-  if (fromHeader && isTenantId(fromHeader)) return fromHeader;
+  if (fromHeader && isTenantId(fromHeader)) return withResolvedTenant(fromHeader);
 
   const cookieStore = await cookies();
   const fromCookie = cookieStore.get("tenant")?.value;
-  if (fromCookie && isTenantId(fromCookie)) return fromCookie;
+  if (fromCookie && isTenantId(fromCookie)) return withResolvedTenant(fromCookie);
 
-  return DEFAULT_TENANT_ID;
+  return withResolvedTenant(DEFAULT_TENANT_ID);
+}
+
+function withResolvedTenant(id: TenantId): TenantId {
+  setRlsTenantId(id);
+  return id;
 }

@@ -13,6 +13,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "./client";
 import { schools, classes, students, users } from "./schema";
+import { allowsMockFallbacks } from "@/lib/runtime/mode";
 
 const DEMO = {
   tenantId: "alfenas",
@@ -28,7 +29,7 @@ const DEMO = {
 } as const;
 
 export async function ensureDemoStudent(): Promise<string | null> {
-  if (!process.env.DATABASE_URL) return null;
+  if (!process.env.DATABASE_URL || !allowsMockFallbacks()) return null;
   try {
     const d = db();
 

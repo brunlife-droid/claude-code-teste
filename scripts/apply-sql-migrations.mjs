@@ -8,6 +8,7 @@ const MIGRATIONS = {
     "0001_class_materials_focus_and_llm_config.sql",
     "0002_student_announcements.sql",
     "0003_artifacts_diary_and_rls.sql",
+    "0004_production_foundation.sql",
     "9999_rls_policies.sql",
   ],
 };

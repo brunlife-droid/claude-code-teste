@@ -11,8 +11,15 @@
  */
 
 import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool, type PoolConfig } from "pg";
+import {
+  Pool,
+  type PoolClient,
+  type PoolConfig,
+  type QueryResult,
+  type QueryResultRow,
+} from "pg";
 import * as schema from "./schema";
+import { getRlsTenantId } from "./rls-context";
 
 type DbClient = ReturnType<typeof drizzle<typeof schema>>;
 
@@ -30,8 +37,70 @@ function build(): DbClient {
       },
     });
   }
-  const pool = new Pool(buildPoolConfig(url));
+  const pool = createTenantAwarePool(buildPoolConfig(url));
   return drizzle(pool, { schema });
+}
+
+function createTenantAwarePool(config: PoolConfig): Pool {
+  const pool = new Pool(config);
+  const originalQuery = pool.query.bind(pool);
+  const originalConnect = pool.connect.bind(pool);
+
+  pool.query = (async (...args: Parameters<Pool["query"]>) => {
+    const tenantId = getRlsTenantId();
+    if (!tenantId) return originalQuery(...args);
+
+    const client = await originalConnect();
+    try {
+      await applyTenantContext(client, tenantId);
+      return await runClientQuery(client, args);
+    } finally {
+      await resetTenantContext(client);
+      client.release();
+    }
+  }) as Pool["query"];
+
+  pool.connect = (async () => {
+    const client = await originalConnect();
+    const tenantId = getRlsTenantId();
+    if (!tenantId) return client;
+
+    await applyTenantContext(client, tenantId);
+    const originalRelease = client.release.bind(client);
+    client.release = ((err?: Error | boolean) => {
+      void resetTenantContext(client).finally(() => originalRelease(err));
+    }) as PoolClient["release"];
+    return client;
+  }) as Pool["connect"];
+
+  return pool;
+}
+
+async function applyTenantContext(
+  client: Pick<PoolClient, "query">,
+  tenantId: string,
+): Promise<void> {
+  await client.query("select set_config('app.tenant_id', $1, false)", [tenantId]);
+}
+
+async function resetTenantContext(
+  client: Pick<PoolClient, "query">,
+): Promise<void> {
+  try {
+    await client.query("reset app.tenant_id");
+  } catch (err) {
+    console.warn("[db/rls] tenant context reset failed:", err);
+  }
+}
+
+function runClientQuery(
+  client: PoolClient,
+  args: Parameters<Pool["query"]>,
+): Promise<QueryResult<QueryResultRow>> {
+  const query = client.query as unknown as (
+    ...queryArgs: Parameters<Pool["query"]>
+  ) => Promise<QueryResult<QueryResultRow>>;
+  return query(...args);
 }
 
 function buildPoolConfig(connectionString: string): PoolConfig {

@@ -8,16 +8,16 @@ function isTenantId(v: string | null | undefined): v is TenantId {
 }
 
 /**
- * Resolve o tenant da requisição na seguinte ordem de prioridade:
+ * Resolve o tenant da requisicao na seguinte ordem de prioridade:
  *
  * 1. Query param `?tenant=X` (sobrescreve cookie e seta novo cookie)
  * 2. Cookie `tenant`
- * 3. Subdomínio (em produção: alfenas.nexus.edu)
+ * 3. Subdominio (em producao: alfenas.nexus.edu)
  * 4. Default (alfenas)
  *
- * O id resolvido é injetado em `x-tenant-id` (lido em Server Components).
+ * O id resolvido e injetado em `x-tenant-id` (lido em Server Components).
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const url = new URL(request.url);
   const queryTenant = url.searchParams.get("tenant");
   const cookieTenant = request.cookies.get("tenant")?.value;
@@ -78,7 +78,7 @@ export const config = {
      * Roda em todas as rotas exceto:
      * - _next/static, _next/image (assets)
      * - favicon.ico
-     * - arquivos públicos (svg, png, etc.)
+     * - arquivos publicos (svg, png, etc.)
      */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],

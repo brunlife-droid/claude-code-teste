@@ -2,6 +2,10 @@ import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { findDemoUser } from "./demo-users";
 import type { UserRole } from "./types";
+import { authorizeDbUser } from "./db-users";
+import { writeAuditLog } from "@/lib/audit/log";
+import { allowsMockFallbacks } from "@/lib/runtime/mode";
+import { resolveTenantId } from "@/lib/tenants/server";
 
 /**
  * Configuração do NextAuth v5.
@@ -32,8 +36,23 @@ export const authConfig: NextAuthConfig = {
         const password = String(credentials?.password ?? "");
         if (!email || !password) return null;
 
+        const tenantId = await resolveTenantId();
+        const dbUser = await authorizeDbUser({ email, password, tenantId });
+        if (dbUser) return dbUser;
+
+        if (!allowsMockFallbacks()) return null;
+
         const demo = findDemoUser(email, password);
         if (!demo) return null;
+
+        await writeAuditLog({
+          tenantId: demo.tenantId,
+          actorUserId: demo.id,
+          action: "auth.login.demo",
+          targetType: "user",
+          targetId: demo.id,
+          metadata: { provider: "credentials-demo" },
+        });
 
         return {
           id: demo.id,

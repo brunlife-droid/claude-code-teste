@@ -17,6 +17,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { llmRoutes, systemPrompts } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
+import { writeAuditLog } from "@/lib/audit/log";
 
 async function requireAdmin() {
   const session = await auth();
@@ -69,6 +70,22 @@ export async function upsertRoute(input: {
       },
     });
 
+  await writeAuditLog({
+    tenantId: user.tenantId,
+    actorUserId: user.id,
+    action: "admin.llm_route.upsert",
+    targetType: "llm_route",
+    targetId: input.capability,
+    metadata: {
+      provider: input.provider,
+      model: input.model,
+      temperature: input.temperature ?? null,
+      maxTokens: input.maxTokens ?? null,
+      fallbackProvider: input.fallbackProvider ?? null,
+      fallbackModel: input.fallbackModel ?? null,
+    },
+  });
+
   revalidatePath("/admin/configuracoes/llm");
   return { ok: true };
 }
@@ -114,6 +131,19 @@ export async function createPromptVersion(input: {
       createdBy: user.id,
     });
 
+  await writeAuditLog({
+    tenantId: user.tenantId,
+    actorUserId: user.id,
+    action: "admin.system_prompt.create",
+    targetType: "system_prompt",
+    targetId: id,
+    metadata: {
+      capability: input.capability,
+      version: input.version,
+      activate: input.activate,
+    },
+  });
+
   revalidatePath("/admin/configuracoes/llm");
   return { ok: true, id };
 }
@@ -122,7 +152,7 @@ export async function activatePromptVersion(input: {
   capability: string;
   promptId: string;
 }) {
-  await requireAdmin();
+  const user = await requireAdmin();
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL ausente");
 
   if (input.promptId.startsWith("hardcoded:")) {
@@ -136,6 +166,14 @@ export async function activatePromptVersion(input: {
           eq(systemPrompts.active, true),
         ),
       );
+    await writeAuditLog({
+      tenantId: user.tenantId,
+      actorUserId: user.id,
+      action: "admin.system_prompt.activate_hardcoded",
+      targetType: "system_prompt",
+      targetId: input.promptId,
+      metadata: { capability: input.capability },
+    });
     revalidatePath("/admin/configuracoes/llm");
     return { ok: true };
   }
@@ -155,12 +193,21 @@ export async function activatePromptVersion(input: {
     .set({ active: true })
     .where(eq(systemPrompts.id, input.promptId));
 
+  await writeAuditLog({
+    tenantId: user.tenantId,
+    actorUserId: user.id,
+    action: "admin.system_prompt.activate",
+    targetType: "system_prompt",
+    targetId: input.promptId,
+    metadata: { capability: input.capability },
+  });
+
   revalidatePath("/admin/configuracoes/llm");
   return { ok: true };
 }
 
 export async function deletePromptVersion(input: { promptId: string }) {
-  await requireAdmin();
+  const user = await requireAdmin();
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL ausente");
   if (input.promptId.startsWith("hardcoded:")) {
     throw new Error("Versão hardcoded não pode ser apagada.");
@@ -179,6 +226,13 @@ export async function deletePromptVersion(input: { promptId: string }) {
     );
   }
   await db().delete(systemPrompts).where(eq(systemPrompts.id, input.promptId));
+  await writeAuditLog({
+    tenantId: user.tenantId,
+    actorUserId: user.id,
+    action: "admin.system_prompt.delete",
+    targetType: "system_prompt",
+    targetId: input.promptId,
+  });
   revalidatePath("/admin/configuracoes/llm");
   return { ok: true };
 }

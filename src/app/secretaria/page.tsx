@@ -1,19 +1,14 @@
 import Link from "next/link";
 import {
   AlertTriangle,
+  ArrowDown,
   ArrowRight,
   ArrowUp,
-  ArrowDown,
-  Download,
   Calendar,
+  Download,
 } from "lucide-react";
 import { Badge, Button, Card } from "@/components/ui";
 import { PageHeader, PageBody } from "@/components/layout";
-import {
-  ESCOLAS_ALFENAS,
-  IDEB_SERIE,
-  INDICADORES_NEXUS,
-} from "@/lib/mocks";
 import { getCurrentTenant } from "@/lib/tenants/server";
 import { requireRole } from "@/lib/auth/session";
 import {
@@ -22,19 +17,22 @@ import {
 } from "@/lib/secretaria/queries";
 
 function pctLabel(score: number): string {
-  if (score === 0) return "—";
+  if (score === 0) return "-";
   return `${(score * 100).toFixed(0)}%`;
 }
 
 export default async function SecretariaDashboard() {
   await requireRole("secretaria");
   const tenant = await getCurrentTenant();
-  const networkKpis = await loadNetworkKpis({ tenantId: tenant.id });
-  // loadSchoolsHealth disponível pra renderizar tabela real; UI atual ainda usa mocks
-  void loadSchoolsHealth;
+  const [networkKpis, schools] = await Promise.all([
+    loadNetworkKpis({ tenantId: tenant.id }),
+    loadSchoolsHealth({ tenantId: tenant.id }),
+  ]);
 
-  const escolasRisco = ESCOLAS_ALFENAS.filter((e) => e.risco !== "baixo");
-
+  const schoolsAtRisk = schools
+    .filter((school) => school.atRiskCount > 0 || school.avgProficiency < 0.45)
+    .sort((a, b) => b.atRiskCount - a.atRiskCount || a.avgProficiency - b.avgProficiency)
+    .slice(0, 6);
   const engagementPct =
     networkKpis.studentsTotal > 0
       ? Math.round(
@@ -42,23 +40,23 @@ export default async function SecretariaDashboard() {
         )
       : 0;
 
-  const KPIS = [
+  const kpis = [
     {
       label: "Alunos ativos",
       value: networkKpis.studentsTotal.toLocaleString("pt-BR"),
-      delta: `${networkKpis.studentsEngaged7d} engajados nos últimos 7d`,
+      delta: `${networkKpis.studentsEngaged7d} engajados nos ultimos 7d`,
       positive: true,
     },
     {
       label: "Professores",
       value: networkKpis.teachersTotal.toString(),
-      delta: `${networkKpis.classesTotal} turmas · ${networkKpis.schoolsTotal} escolas`,
+      delta: `${networkKpis.classesTotal} turmas - ${networkKpis.schoolsTotal} escolas`,
       positive: true,
     },
     {
-      label: "Proficiência média",
+      label: "Proficiencia media",
       value: pctLabel(networkKpis.avgProficiency),
-      delta: "agregado da rede no Postgres",
+      delta: "agregado real do Postgres",
       positive: networkKpis.avgProficiency >= 0.6,
     },
     {
@@ -66,32 +64,67 @@ export default async function SecretariaDashboard() {
       value: networkKpis.studentsAtRisk.toString(),
       delta:
         networkKpis.studentsAtRisk === 0
-          ? "ninguém em risco"
+          ? "nenhum aluno no corte"
           : `${engagementPct}% da rede ativa`,
       positive: networkKpis.studentsAtRisk === 0,
+    },
+  ];
+
+  const indicators = [
+    {
+      sigla: "IEP",
+      nome: "Indice de evolucao pedagogica",
+      valor: pctLabel(networkKpis.avgProficiency),
+      ok: networkKpis.avgProficiency >= 0.6,
+      desc: "Media de proficiencia por habilidade BNCC registrada.",
+    },
+    {
+      sigla: "IRA",
+      nome: "Indice de risco academico",
+      valor:
+        networkKpis.studentsTotal > 0
+          ? `${Math.round((networkKpis.studentsAtRisk / networkKpis.studentsTotal) * 100)}%`
+          : "-",
+      ok: networkKpis.studentsAtRisk === 0,
+      desc: "Percentual de alunos abaixo do corte pedagogico atual.",
+    },
+    {
+      sigla: "TPL",
+      nome: "Taxa de participacao na tutora",
+      valor: `${engagementPct}%`,
+      ok: engagementPct >= 50,
+      desc: "Alunos com conversa registrada nos ultimos 7 dias.",
+    },
+    {
+      sigla: "ERM",
+      nome: "Escolas requerendo monitoramento",
+      valor: schoolsAtRisk.length.toString(),
+      ok: schoolsAtRisk.length === 0,
+      desc: "Escolas com risco academico ou baixa proficiencia agregada.",
     },
   ];
 
   return (
     <>
       <PageHeader
-        title={`Visão da rede · ${tenant.short}`}
-        subtitle={`${tenant.population} · ${tenant.schools} escolas · ${tenant.teachers} professores`}
+        title={`Visao da rede - ${tenant.short}`}
+        subtitle={`${networkKpis.schoolsTotal} escolas - ${networkKpis.classesTotal} turmas - ${networkKpis.teachersTotal} profissionais`}
         actions={
           <>
             <Button variant="secondary" icon={<Calendar size={14} />}>
-              2º bimestre
+              Bimestre atual
             </Button>
-            <Button variant="secondary" icon={<Download size={14} />}>
-              Exportar
-            </Button>
+            <Link href="/secretaria/relatorio">
+              <Button variant="secondary" icon={<Download size={14} />}>
+                Relatorio
+              </Button>
+            </Link>
           </>
         }
       />
       <PageBody>
-        {/* KPIs */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {KPIS.map((k) => (
+          {kpis.map((k) => (
             <Card key={k.label} className="p-4">
               <div className="text-text-faint text-[11.5px] font-medium tracking-wider uppercase">
                 {k.label}
@@ -99,7 +132,11 @@ export default async function SecretariaDashboard() {
               <div className="mt-1.5 text-[28px] leading-none font-semibold tracking-tight">
                 {k.value}
               </div>
-              <div className={`mt-1 flex items-center gap-1 text-xs ${k.positive ? "text-success-fg" : "text-danger-fg"}`}>
+              <div
+                className={`mt-1 flex items-center gap-1 text-xs ${
+                  k.positive ? "text-success-fg" : "text-danger-fg"
+                }`}
+              >
                 {k.positive ? <ArrowUp size={11} /> : <ArrowDown size={11} />}
                 {k.delta}
               </div>
@@ -107,160 +144,108 @@ export default async function SecretariaDashboard() {
           ))}
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-          {/* IDEB */}
+        <div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]">
           <Card className="p-0">
-            <div className="border-border flex items-center justify-between border-b px-6 py-4">
-              <div>
-                <div className="text-sm font-semibold">IDEB · evolução</div>
-                <div className="text-text-muted mt-0.5 text-xs">
-                  Anos finais · meta nacional vs. rede municipal
+            <div className="border-border border-b px-6 py-4">
+              <div className="text-sm font-semibold">Saude das escolas</div>
+              <div className="text-text-muted mt-0.5 text-xs">
+                Proficiencia media e alunos em risco por escola
+              </div>
+            </div>
+            {schools.length === 0 ? (
+              <div className="p-8 text-sm text-text-muted">
+                Nenhuma escola encontrada para este tenant.
+              </div>
+            ) : (
+              <div className="p-5">
+                <div className="flex flex-col gap-3">
+                  {schools.slice(0, 8).map((school) => (
+                    <div key={school.id} className="grid gap-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">
+                            {school.name}
+                          </div>
+                          <div className="text-text-muted text-xs">
+                            {school.studentsTotal} alunos - {school.classesTotal} turmas
+                          </div>
+                        </div>
+                        <Badge
+                          tone={
+                            school.atRiskCount > 0 || school.avgProficiency < 0.45
+                              ? "warning"
+                              : "success"
+                          }
+                        >
+                          {pctLabel(school.avgProficiency)}
+                        </Badge>
+                      </div>
+                      <div className="bg-surface-3 h-2 overflow-hidden rounded">
+                        <div
+                          className="h-full"
+                          style={{
+                            width: `${Math.round(school.avgProficiency * 100)}%`,
+                            background:
+                              school.avgProficiency >= 0.6
+                                ? "var(--success)"
+                                : "var(--warning)",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <Badge tone="success">superando a meta</Badge>
-            </div>
-            <div className="p-6">
-              <svg viewBox="0 0 600 220" className="h-44 w-full">
-                {/* grid */}
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <line
-                    key={i}
-                    x1={36}
-                    x2={580}
-                    y1={20 + i * 40}
-                    y2={20 + i * 40}
-                    stroke="var(--border)"
-                    strokeDasharray="3 3"
-                  />
-                ))}
-                {/* x labels */}
-                {IDEB_SERIE.map((p, i) => (
-                  <text
-                    key={p.ano}
-                    x={36 + (i * 544) / (IDEB_SERIE.length - 1)}
-                    y={210}
-                    textAnchor="middle"
-                    fill="var(--text-faint)"
-                    fontSize="11"
-                  >
-                    {p.ano}
-                  </text>
-                ))}
-                {/* meta line */}
-                <polyline
-                  fill="none"
-                  stroke="var(--secondary)"
-                  strokeWidth="2"
-                  strokeDasharray="4 4"
-                  points={IDEB_SERIE.map(
-                    (p, i) =>
-                      `${36 + (i * 544) / (IDEB_SERIE.length - 1)},${180 - ((p.meta - 4) / 2) * 140}`,
-                  ).join(" ")}
-                />
-                {/* rede line */}
-                <polyline
-                  fill="none"
-                  stroke={tenant.primary}
-                  strokeWidth="2.5"
-                  strokeLinejoin="round"
-                  points={IDEB_SERIE.map(
-                    (p, i) =>
-                      `${36 + (i * 544) / (IDEB_SERIE.length - 1)},${180 - ((p.rede - 4) / 2) * 140}`,
-                  ).join(" ")}
-                />
-                {IDEB_SERIE.map((p, i) => (
-                  <circle
-                    key={p.ano}
-                    cx={36 + (i * 544) / (IDEB_SERIE.length - 1)}
-                    cy={180 - ((p.rede - 4) / 2) * 140}
-                    r="4"
-                    fill="var(--surface)"
-                    stroke={tenant.primary}
-                    strokeWidth="2.5"
-                  />
-                ))}
-              </svg>
-              <div className="text-text-muted mt-2 flex gap-4 text-xs">
-                <span className="flex items-center gap-1.5">
-                  <span
-                    className="inline-block h-0.5 w-3"
-                    style={{ background: tenant.primary }}
-                  />
-                  Rede
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-0.5 w-3 bg-[var(--secondary)] [border-style:dashed]" />
-                  Meta
-                </span>
-              </div>
-            </div>
+            )}
           </Card>
 
-          {/* Indicadores Nexus */}
           <Card className="p-0">
             <div className="border-border border-b px-6 py-4">
               <div className="text-sm font-semibold">Indicadores Nexus</div>
               <div className="text-text-muted mt-0.5 text-xs">
-                Métricas proprietárias · só Nexus Education tem
+                Calculados a partir dos dados persistidos
               </div>
             </div>
             <div className="flex flex-col">
-              {INDICADORES_NEXUS.map((ind) => {
-                const ok = ind.inverso
-                  ? ind.valor <= ind.ideal
-                  : ind.valor >= ind.ideal * 0.9;
-                const deltaPositive = ind.inverso ? ind.delta < 0 : ind.delta > 0;
-                return (
+              {indicators.map((ind) => (
+                <div
+                  key={ind.sigla}
+                  className="border-border flex items-center gap-4 px-6 py-3 not-last:border-b"
+                >
                   <div
-                    key={ind.sigla}
-                    className="border-border flex items-center gap-4 px-6 py-3 not-last:border-b"
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-md text-xs font-bold ${
+                      ind.ok
+                        ? "bg-success-soft text-success-fg"
+                        : "bg-warning-soft text-warning-fg"
+                    }`}
+                    style={{ fontFamily: "var(--font-mono)" }}
                   >
-                    <div
-                      className={`flex size-9 shrink-0 items-center justify-center rounded-md text-xs font-bold ${
-                        ok
-                          ? "bg-success-soft text-success-fg"
-                          : "bg-warning-soft text-warning-fg"
-                      }`}
-                      style={{ fontFamily: "var(--font-mono)" }}
-                    >
-                      {ind.sigla}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[13.5px] font-medium">{ind.nome}</div>
-                      <div className="text-text-muted truncate text-[11.5px]">
-                        {ind.desc}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-semibold tabular-nums">
-                        {ind.valor}
-                        {ind.sigla === "IRA" ? "" : "%"}
-                      </div>
-                      <div
-                        className={`text-[10.5px] ${deltaPositive ? "text-success-fg" : "text-danger-fg"}`}
-                      >
-                        {ind.delta > 0 ? "+" : ""}
-                        {ind.delta}
-                      </div>
+                    {ind.sigla}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13.5px] font-medium">{ind.nome}</div>
+                    <div className="text-text-muted truncate text-[11.5px]">
+                      {ind.desc}
                     </div>
                   </div>
-                );
-              })}
+                  <div className="text-sm font-semibold tabular-nums">
+                    {ind.valor}
+                  </div>
+                </div>
+              ))}
             </div>
           </Card>
         </div>
 
-        {/* Escolas em risco */}
         <Card className="p-0">
           <div className="border-border flex items-center justify-between border-b px-6 py-4">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <AlertTriangle size={14} className="text-warning" />
-                Escolas que pedem atenção
+                Escolas que pedem atencao
               </div>
               <div className="text-text-muted mt-0.5 text-xs">
-                {escolasRisco.length} de {ESCOLAS_ALFENAS.length} escolas com
-                IEB abaixo da meta
+                {schoolsAtRisk.length} escola(s) com risco ou baixa proficiencia
               </div>
             </div>
             <Link href="/secretaria/escolas">
@@ -270,55 +255,51 @@ export default async function SecretariaDashboard() {
               </Button>
             </Link>
           </div>
-          <table className="w-full border-separate border-spacing-0 text-sm">
-            <thead>
-              <tr>
-                {["Escola", "Região", "Alunos", "IEB", "Risco"].map((h) => (
-                  <th
-                    key={h}
-                    className="bg-surface-2 text-text-faint border-border border-b px-4 py-2 text-left text-[11px] font-medium tracking-wide uppercase"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {escolasRisco.map((e) => (
-                <tr key={e.id} className="hover:bg-surface-2">
-                  <td className="border-border h-11 border-b px-4 align-middle font-medium">
-                    {e.nome}
-                  </td>
-                  <td className="border-border text-text-muted h-11 border-b px-4 align-middle text-xs">
-                    {e.regiao}
-                  </td>
-                  <td
-                    className="border-border h-11 border-b px-4 align-middle text-xs"
-                    style={{ fontFamily: "var(--font-mono)" }}
-                  >
-                    {e.alunos}
-                  </td>
-                  <td
-                    className="border-border h-11 border-b px-4 align-middle text-xs font-semibold"
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      color:
-                        e.risco === "alto"
-                          ? "var(--danger-fg)"
-                          : "var(--warning-fg)",
-                    }}
-                  >
-                    {e.ieb}
-                  </td>
-                  <td className="border-border h-11 border-b px-4 align-middle">
-                    <Badge tone={e.risco === "alto" ? "danger" : "warning"}>
-                      {e.risco}
-                    </Badge>
-                  </td>
+          {schoolsAtRisk.length === 0 ? (
+            <div className="p-6 text-sm text-text-muted">
+              Nenhuma escola no corte de atencao atual.
+            </div>
+          ) : (
+            <table className="w-full border-separate border-spacing-0 text-sm">
+              <thead>
+                <tr>
+                  {["Escola", "Regiao", "Alunos", "Proficiencia", "Em risco"].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="bg-surface-2 text-text-faint border-border border-b px-4 py-2 text-left text-[11px] font-medium tracking-wide uppercase"
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {schoolsAtRisk.map((school) => (
+                  <tr key={school.id} className="hover:bg-surface-2">
+                    <td className="border-border h-11 border-b px-4 align-middle font-medium">
+                      {school.name}
+                    </td>
+                    <td className="border-border text-text-muted h-11 border-b px-4 align-middle text-xs">
+                      {school.region ?? "-"}
+                    </td>
+                    <td className="border-border h-11 border-b px-4 align-middle text-xs">
+                      {school.studentsTotal}
+                    </td>
+                    <td className="border-border h-11 border-b px-4 align-middle text-xs font-semibold">
+                      {pctLabel(school.avgProficiency)}
+                    </td>
+                    <td className="border-border h-11 border-b px-4 align-middle">
+                      <Badge tone={school.atRiskCount > 0 ? "danger" : "warning"}>
+                        {school.atRiskCount}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </Card>
       </PageBody>
     </>
