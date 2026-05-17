@@ -13,6 +13,7 @@
 - A migration `9999_rls_policies.sql` agora cobre as tabelas tenant-scoped mais recentes e aplica `FORCE ROW LEVEL SECURITY`, reduzindo o risco de a conexao owner bypassar as politicas.
 - Seeds e fallbacks demo de aluno/professor deixam de rodar em `NODE_ENV=production`, salvo `NEXUS_DEMO_MODE=true` ou `NEXUS_ALLOW_MOCKS=true`.
 - Auth por credenciais reais agora resolve o tenant da request antes de consultar `memberships`, mantendo login compativel com RLS por tenant.
+- Railway passou a usar `/api/health` como healthcheck tecnico sem DB, evitando que falhas de render/tenant na home confundam o status do container.
 
 Consequencia: a operacao em Railway fica mais alinhada ao alvo de producao real: Next 16 sem middleware legado, RLS efetivamente acoplada ao tenant da request e mocks/dados demo bloqueados por padrao em producao.
 

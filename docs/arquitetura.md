@@ -13,6 +13,7 @@
 - `src/lib/db/rls-context.ts` guarda o tenant resolvido por request e `src/lib/db/client.ts` aplica `app.tenant_id` no mesmo client do pool antes das queries, resetando em seguida.
 - `9999_rls_policies.sql` aplica `FORCE ROW LEVEL SECURITY` nas tabelas tenant-scoped, incluindo anuncios, artefatos, diario e foco de turma.
 - Seeds/fallbacks demo de aluno/professor sao bloqueados em producao salvo `NEXUS_DEMO_MODE=true` ou `NEXUS_ALLOW_MOCKS=true`.
+- Railway usa `/api/health` como healthcheck tecnico leve, sem dependencia de DB/render da home.
 - Build validado com Next 16 via `next build --webpack`; Turbopack neste Windows falhou antes da compilacao por `Acesso negado` ao spawnar processo de PostCSS, nao por erro da aplicacao.
 
 > **Atualizar sempre que uma decisão arquitetural mudar** — nova abstração, nova camada, novo provider, refator estrutural. Não duplicar o ROADMAP; aqui é o **estado real do código**, não o plano.
@@ -82,7 +83,8 @@ O `CLAUDE.md` continua sendo a documentação humana do workflow; os hooks são 
 - Campos derivados (`population`, `students`, `teachers`, `schools`) ainda vêm do overlay in-code até COUNT real existir.
 
 ### Deploy Railway
-- `railway.json` configura build com Railpack, pre-deploy command `npm run db:deploy`, start command `npm run start:railway`, healthcheck em `/` e restart on failure.
+- `railway.json` configura build com Railpack, pre-deploy command `npm run db:deploy`, start command `npm run start:railway`, healthcheck em `/api/health` e restart on failure.
+- O healthcheck de Railway aponta para `/api/health`, que apenas confirma que o servidor Next respondeu; smoke tests de DB/LLM continuam separados.
 - `npm run start:railway` sobe Next em `0.0.0.0` usando `$PORT`, que é o contrato esperado em ambientes containerizados.
 - `src/lib/db/client.ts` usa `pg` + `drizzle-orm/node-postgres`, não mais o driver específico do Neon. SSL é ativado por `DATABASE_SSL=true`, `sslmode=require` ou host Neon; Railway Postgres privado pode rodar sem SSL quando `DATABASE_SSL=false`.
 - `scripts/apply-sql-migrations.mjs` aplica os SQLs manuais em duas fases: `prepush` cria extensões (`vector`, `pgcrypto`) antes do `drizzle-kit push`; `postpush` reaplica patches, RLS e índices extras de forma idempotente.
