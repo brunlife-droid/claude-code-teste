@@ -12,6 +12,7 @@ import {
   Tag,
   Volume2,
 } from "lucide-react";
+import { LlmMarkdown } from "@/components/llm";
 import { Chip } from "@/components/ui";
 
 export interface MessageSource {
@@ -506,8 +507,10 @@ function MessageBubble({
         {tutorInitial}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[15px] leading-relaxed whitespace-pre-wrap">
-          {message.content}
+        <div className="text-[15px] leading-relaxed">
+          {message.content && (
+            <LlmMarkdown content={message.content} variant="chat" />
+          )}
           {message.streaming && (
             <span
               className="ml-1 inline-block h-4 w-0.5 align-middle"

@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Loader2, Sparkles } from "lucide-react";
+import { LlmMarkdown } from "@/components/llm";
 import { Badge, Button, Card } from "@/components/ui";
 
 const SAMPLE_ESSAY = `A desigualdade social no Brasil é um problema histórico que se mantém até os dias atuais. Apesar dos avanços, milhões de pessoas ainda vivem em condições precárias enquanto poucos concentram grande parte da riqueza nacional. Esse cenário compromete não apenas a economia, mas também a dignidade humana.
@@ -186,8 +187,8 @@ export function CorrecaoClient() {
             </div>
           )}
           {(feedback || grading) && (
-            <article className="prose prose-sm max-w-none text-[14px] leading-relaxed whitespace-pre-wrap">
-              {feedback}
+            <article>
+              {feedback && <LlmMarkdown content={feedback} />}
               {grading && (
                 <span
                   className="ml-1 inline-block h-4 w-0.5 align-middle"

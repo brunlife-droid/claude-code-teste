@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Loader2, Sparkles } from "lucide-react";
+import { LlmMarkdown } from "@/components/llm";
 import { Badge, Button, Card } from "@/components/ui";
 
 const SUBJECTS = [
@@ -215,8 +216,8 @@ export function CopilotoClient() {
             </div>
           )}
           {(plan || generating) && (
-            <article className="prose prose-sm max-w-none text-[14px] leading-relaxed whitespace-pre-wrap">
-              {plan}
+            <article>
+              {plan && <LlmMarkdown content={plan} />}
               {generating && (
                 <span
                   className="ml-1 inline-block h-4 w-0.5 align-middle"

@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-17 — Renderização Markdown das respostas da IA
+
+- Criado `LlmMarkdown` como renderizador compartilhado para respostas geradas por LLM, com `react-markdown`, GFM, quebra de linha amigável e HTML bruto desabilitado.
+- O chat do aluno deixou de exibir Markdown como texto cru e agora interpreta negrito, listas, tabelas, links e blocos de código nas respostas da tutora.
+- As telas do professor que geram conteúdo por IA (`/professor/copiloto`, `/professor/correcao`, `/professor/provas` e previews da biblioteca) passaram a usar o mesmo renderizador.
+- Os artefatos de estudo do aluno também passaram a renderizar Markdown nos cartões, quiz e resumo guiado quando o modelo devolver ênfases ou listas dentro dos campos estruturados.
+
+Consequência: o formato produzido pela LLM agora é capturado pela interface em vez de aparecer quebrado com `**negrito**`, listas e tabelas como texto literal.
+
+---
+
 ## 2026-05-17 — Revitalização visual global
 
 - A paleta base deixou de depender tanto de cinzas neutros e passou a usar superfícies claras, washes da marca do tenant e acentos pedagógicos para dar mais energia sem infantilizar a interface.

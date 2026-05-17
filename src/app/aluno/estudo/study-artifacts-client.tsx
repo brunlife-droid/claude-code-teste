@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react";
+import { LlmMarkdown } from "@/components/llm";
 import type {
   StudentArtifact,
   StudentArtifactContent,
@@ -300,11 +301,15 @@ function FlashcardViewer({
         <div className="text-text-faint text-xs font-semibold uppercase tracking-widest">
           {revealed ? "Resposta" : "Frente"}
         </div>
-        <div className="mt-4 text-2xl font-semibold leading-snug">
-          {revealed ? card.back : card.front}
-        </div>
+        <LlmMarkdown
+          className="mt-4 text-2xl font-semibold leading-snug"
+          content={revealed ? card.back : card.front}
+          variant="compact"
+        />
         {!revealed && card.hint && (
-          <div className="text-text-muted mt-6 text-sm">Pista: {card.hint}</div>
+          <div className="text-text-muted mt-6 text-sm">
+            Pista: <LlmMarkdown content={card.hint} variant="compact" />
+          </div>
         )}
       </button>
 
@@ -375,9 +380,11 @@ function QuizViewer({
             Acertos: {score}/{content.questions.length}
           </div>
         </div>
-        <div className="mt-3 text-xl font-semibold leading-snug">
-          {question.question}
-        </div>
+        <LlmMarkdown
+          className="mt-3 text-xl font-semibold leading-snug"
+          content={question.question}
+          variant="compact"
+        />
       </div>
 
       <div className="mt-4 grid gap-2">
@@ -407,7 +414,7 @@ function QuizViewer({
               >
                 {String.fromCharCode(65 + optionIndex)}
               </span>
-              <span className="flex-1">{option}</span>
+              <LlmMarkdown className="flex-1" content={option} variant="compact" />
               {answered && correct && <CheckCircle2 size={16} />}
             </button>
           );
@@ -416,7 +423,7 @@ function QuizViewer({
 
       {selected !== undefined && (
         <div className="bg-info-soft text-text mt-4 rounded-lg p-4 text-sm leading-relaxed">
-          {question.explanation}
+          <LlmMarkdown content={question.explanation} variant="compact" />
         </div>
       )}
 
@@ -448,15 +455,15 @@ function SummaryViewer({
         <div className="text-text-faint text-xs font-semibold uppercase tracking-widest">
           Resumo
         </div>
-        <p className="mt-3 text-[15px] leading-relaxed whitespace-pre-wrap">
-          {content.summary}
-        </p>
+        <LlmMarkdown className="mt-3" content={content.summary} variant="chat" />
         {content.practicePrompt && (
           <div className="border-primary-border bg-primary-soft mt-5 rounded-lg border p-4">
             <div className="text-sm font-semibold">Pergunta de treino</div>
-            <div className="text-text-muted mt-1 text-sm">
-              {content.practicePrompt}
-            </div>
+            <LlmMarkdown
+              className="mt-1 text-text-muted"
+              content={content.practicePrompt}
+              variant="compact"
+            />
           </div>
         )}
       </div>
@@ -468,7 +475,7 @@ function SummaryViewer({
             {content.keyPoints.map((point) => (
               <li key={point} className="flex gap-2">
                 <span className="bg-primary mt-2 size-1.5 shrink-0 rounded-full" />
-                <span>{point}</span>
+                <LlmMarkdown content={point} variant="compact" />
               </li>
             ))}
           </ul>
@@ -481,7 +488,7 @@ function SummaryViewer({
                 <span className="text-text-faint w-5 shrink-0 font-mono">
                   {index + 1}.
                 </span>
-                <span>{step}</span>
+                <LlmMarkdown content={step} variant="compact" />
               </li>
             ))}
           </ol>

@@ -1,4 +1,5 @@
 import { Eye, Heart, Search, Upload } from "lucide-react";
+import { LlmMarkdown } from "@/components/llm";
 import { Badge, Button, Card, Chip } from "@/components/ui";
 import { PageHeader, PageBody } from "@/components/layout";
 import { requireRole } from "@/lib/auth/session";
@@ -126,7 +127,14 @@ export default async function BibliotecaPage() {
                     {artifact.title}
                   </h3>
                   <p className="text-text-muted mt-2 line-clamp-3 text-xs leading-relaxed">
-                    {artifact.contentPreview || "Conteúdo salvo no histórico."}
+                    {artifact.contentPreview ? (
+                      <LlmMarkdown
+                        content={artifact.contentPreview}
+                        variant="compact"
+                      />
+                    ) : (
+                      "Conteúdo salvo no histórico."
+                    )}
                   </p>
                   <div className="text-text-faint mt-3 truncate text-[11px]">
                     {artifact.provider ?? "provider"} · {artifact.model ?? "modelo"}

@@ -11,7 +11,7 @@
 | Camada | Tecnologia | Onde mora |
 | --- | --- | --- |
 | Framework | Next.js 16 (App Router, Turbopack) | raiz |
-| UI | React 19 + Tailwind v4 + CSS vars semânticas | `src/app/`, `src/components/` |
+| UI | React 19 + Tailwind v4 + CSS vars semânticas + Markdown seguro | `src/app/`, `src/components/` |
 | DB | Postgres (Neon serverless) + pgvector | `drizzle/migrations/` |
 | ORM | Drizzle | `src/lib/db/` |
 | Auth | NextAuth v5 (credenciais demo por enquanto) | `src/lib/auth/` |
@@ -70,6 +70,7 @@ O `CLAUDE.md` continua sendo a documentação humana do workflow; os hooks são 
 - Tudo passa por `src/lib/llm/gateway.ts`. Componentes nunca chamam OpenRouter direto.
 - Roteamento por **capability** (chat, artefatos do aluno, plano, prova, correção, embeddings), não por modelo direto. Permite trocar provider sem deploy.
 - Observability (tokens, latência, custo por tenant) passa pelo gateway.
+- Conteúdo textual gerado pela LLM deve ser exibido via `src/components/llm/LlmMarkdown`, não como string crua. O componente usa Markdown/GFM, transforma quebras simples em `<br>`, bloqueia HTML bruto e restringe URLs a protocolos seguros.
 
 ### White-label
 - CSS vars semânticas injetadas via `<style>` no layout raiz, lidas da tabela `tenants`.
