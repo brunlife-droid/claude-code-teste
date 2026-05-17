@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-05-17 — Validação de produção do chat multimodal e estudo ativo
+
+- Deploy `8fefb7c` no projeto Vercel `claude-code-teste` passou depois da correção de typecheck no parser multimodal.
+- Validação local executada com `next build`, `tsc --noEmit`, `eslint src` e `git diff --check`.
+- Em produção, `/aluno/estudo` abriu autenticada e carregou os artefatos recentes persistidos.
+- `/api/student-artifacts` gerou, via OpenRouter real, os três tipos de estudo ativo: cartões, quiz e resumo guiado.
+- `/api/upload` aceitou imagem PNG, documento TXT e áudio WAV no Blob privado; `/api/chat` analisou os três anexos juntos e respondeu com base no conteúdo visual, texto extraído e transcrição.
+
+Consequência: o bloco pedido para o aluno ficou validado em produção de ponta a ponta para estudo ativo e chat multimodal web.
+
+---
+
 ## 2026-05-16 — Chat multimodal e artefatos de estudo do aluno
 
 - `/api/chat` agora aceita anexos estruturados (`image`, `audio`, `document`) e prepara o conteúdo no servidor antes de chamar o gateway LLM: imagem vai como parte multimodal, áudio é transcrito pela API de transcrição da OpenAI quando há chave, e documentos usam extração de texto (`pdf-parse`/`mammoth`/texto).

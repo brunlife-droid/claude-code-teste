@@ -2,7 +2,7 @@
 
 > **Atualizar este arquivo sempre que o estado do projeto mudar.** Foto rápida do que está pronto, o que está em andamento e o que ainda não foi tocado.
 >
-> Última atualização: 2026-05-16 (chat multimodal + artefatos de estudo)
+> Última atualização: 2026-05-17 (chat multimodal + artefatos de estudo validados em produção)
 
 ---
 
@@ -26,6 +26,11 @@
   - `/api/llm-health` respondeu com OpenRouter real (`anthropic/claude-haiku-4-5`, `sample: "pong"`).
   - Rotas SSE (`/api/chat`, `/api/lesson-plan`, `/api/essay-correction`) foram corrigidas e validadas em produção com respostas `200 OK`. Elas agora usam `complete()` + `createBufferedSseResponse()` e mantêm o contrato de linhas `data: ...` consumido pelo frontend.
   - Bruno já pode testar login, chat do aluno, copiloto do professor, correção de redação e gerador de prova em produção. Upload de material usa Vercel Blob privado (`nexus-materials`).
+- **Teste de produção em 2026-05-17**:
+  - Deploy `8fefb7c` ficou verde na Vercel.
+  - `/aluno/estudo` abriu autenticada com o menu "Estudo ativo" e recarregou artefatos persistidos.
+  - `/api/student-artifacts` gerou cartões, quiz e resumo guiado com OpenRouter real.
+  - `/api/upload` aceitou PNG, TXT e WAV no Blob privado; `/api/chat` analisou imagem + documento + áudio juntos e respondeu `200 OK` com base nos três anexos.
 
 ---
 
