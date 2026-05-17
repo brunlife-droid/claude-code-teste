@@ -2,8 +2,9 @@
 
 ## Atualizacao Codex - 2026-05-17
 
+- Etapa 2 do UX do aluno aplicada em `/aluno/estudo`: artefatos ganharam layout premium, cartões com virada/progresso/domínio local, quiz com placar/feedback e resumo com checklist de estudo.
 - Refinamento visual adicional da Etapa 1 do chat: a tela do aluno ficou menos quadrada, com canvas em gradiente leve, grade sutil, header/composer translucidos e bolhas com mais profundidade para aumentar engajamento sem alterar LLM/API.
-- O seletor demo de tenant nao aparece em `/aluno/chat`, evitando sobreposicao no composer e deixando a tela real do aluno mais limpa.
+- O seletor demo de tenant nao aparece em `/aluno/chat` nem em `/aluno/estudo`, evitando sobreposicao e deixando as telas principais do aluno mais limpas.
 - Railway passa a ser o alvo operacional recomendado para centralizar app, Postgres e S3; Vercel/Neon continuam documentados abaixo como legado/transicao.
 - Runtime agora separa dev/demo/producao. Em `NODE_ENV=production`, LLM, embeddings e storage nao podem cair em mock silencioso sem `NEXUS_ALLOW_MOCKS=true` ou `NEXUS_DEMO_MODE=true`.
 - `src/proxy.ts` substitui `src/middleware.ts` no Next 16 e continua injetando `x-tenant-id` e `x-pathname`.

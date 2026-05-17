@@ -15,8 +15,9 @@
 - `9999_rls_policies.sql` aplica `FORCE ROW LEVEL SECURITY` nas tabelas tenant-scoped, incluindo anuncios, artefatos, diario e foco de turma.
 - Seeds/fallbacks demo de aluno/professor sao bloqueados em producao salvo `NEXUS_DEMO_MODE=true` ou `NEXUS_ALLOW_MOCKS=true`.
 - Railway usa `/api/health` como healthcheck tecnico leve, sem dependencia de DB/render da home.
-- A área do aluno agora alterna entre sidebar completa no desktop e navegação inferior no mobile para evitar chat espremido em telas pequenas; o seletor demo de tenant não aparece no mobile nem em `/aluno/chat`.
+- A área do aluno agora alterna entre sidebar completa no desktop e navegação inferior no mobile para evitar chat espremido em telas pequenas; o seletor demo de tenant não aparece no mobile nem em `/aluno/chat`/`/aluno/estudo`.
 - `ChatClient` usa um canvas visual proprio para a experiencia do aluno: fundo em gradiente/grade sutil, superficies translucidas, composer fixo premium e bolhas com profundidade, mantendo contrato de API e persistencia inalterados.
+- `StudyArtifactsClient` continua consumindo o mesmo contrato de `/api/student-artifacts`, mas a interação local foi refinada: cartões têm flip/progresso/domínio, quiz tem placar/feedback e resumo tem checklist de estudo sem nova persistência.
 - Build validado com Next 16 via `next build --webpack`; Turbopack neste Windows falhou antes da compilacao por `Acesso negado` ao spawnar processo de PostCSS, nao por erro da aplicacao.
 
 > **Atualizar sempre que uma decisão arquitetural mudar** — nova abstração, nova camada, novo provider, refator estrutural. Não duplicar o ROADMAP; aqui é o **estado real do código**, não o plano.

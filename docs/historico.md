@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-05-17 - Etapa 2 do UX de estudo ativo
+
+- `/aluno/estudo` ganhou uma experiência mais premium para artefatos do aluno: seletor visual de formato, superfície mais leve, histórico lateral e rolagem automática até o material gerado.
+- Cartões agora têm virada com sensação física, progresso, marcação local de "revisar depois" e "já entendi", além de painel de ritmo de revisão.
+- Quiz ganhou barra de progresso, placar, feedback visual de acerto/erro, explicação destacada e estado de sessão concluída com opção de refazer.
+- Resumo guiado ganhou plano de 10 minutos com checklist interativo, progresso e pontos-chave em uma leitura mais escaneável.
+- O seletor visual de tenant demo também fica oculto em `/aluno/estudo`, para não comprometer a experiência final do aluno.
+
+Consequencia: a segunda etapa aumenta engajamento nos materiais de estudo sem alterar contrato de API, capability LLM ou schema; a próxima etapa pode focar em animações/estado vazio do chat ou persistência avançada dos artefatos.
+
+---
+
 ## 2026-05-17 - Etapa 1 do UX do chat do aluno
 
 - Depois da validacao visual do Bruno, o chat recebeu um refinamento para parecer menos quadrado e mais vivo: canvas com gradiente leve, grade sutil, header translucido, composer mais premium e bolhas com mais profundidade.
