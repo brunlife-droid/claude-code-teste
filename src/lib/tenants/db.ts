@@ -64,14 +64,16 @@ export const loadTenantFromDb = cache(
     if (!dbAvailable()) return inCode;
 
     try {
-      const rows = await withRlsTenant(null, async () => {
-        await ensureTenantsSeeded();
-        return db()
-          .select()
-          .from(tenantsTable)
-          .where(eq(tenantsTable.id, id))
-          .limit(1);
-      });
+      const rows = await withTenantDbTimeout(
+        withRlsTenant(null, async () => {
+          await ensureTenantsSeeded();
+          return db()
+            .select()
+            .from(tenantsTable)
+            .where(eq(tenantsTable.id, id))
+            .limit(1);
+        }),
+      );
       const row = rows[0];
       if (!row) return inCode;
 
@@ -100,3 +102,23 @@ export const loadTenantFromDb = cache(
     }
   },
 );
+
+function withTenantDbTimeout<T>(promise: Promise<T>): Promise<T> {
+  const timeoutMs = Number(process.env.TENANT_DB_TIMEOUT_MS ?? 2500);
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`tenant DB lookup timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
