@@ -606,13 +606,29 @@ function ChatHeader({
             </div>
           </div>
         </div>
-        <Link
-          href="/aluno/estudo"
-          className="border-primary-border bg-primary-soft text-primary lift-on-hover hidden items-center gap-2 rounded-md border px-3 py-2 text-[12.5px] font-medium sm:inline-flex"
-        >
-          <Layers3 size={14} />
-          Estudo ativo
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/aluno/historico"
+            aria-label="Abrir materiais e conversas"
+            className="border-border-strong bg-white/72 text-text-muted hover:bg-surface-2 grid size-10 place-items-center rounded-md border shadow-[var(--shadow-xs)] transition-colors sm:hidden"
+          >
+            <BookOpenCheck size={16} />
+          </Link>
+          <Link
+            href="/aluno/historico"
+            className="border-border-strong bg-white/72 text-text-muted lift-on-hover hidden items-center gap-2 rounded-md border px-3 py-2 text-[12.5px] font-medium sm:inline-flex"
+          >
+            <BookOpenCheck size={14} />
+            Materiais
+          </Link>
+          <Link
+            href="/aluno/estudo"
+            className="border-primary-border bg-primary-soft text-primary lift-on-hover hidden items-center gap-2 rounded-md border px-3 py-2 text-[12.5px] font-medium sm:inline-flex"
+          >
+            <Layers3 size={14} />
+            Estudo ativo
+          </Link>
+        </div>
       </div>
     </header>
   );

@@ -14,7 +14,11 @@ export function TenantSwitcher({ current }: { current: TenantId }) {
   const router = useRouter();
   const params = useSearchParams();
 
-  if (pathname === "/aluno/chat" || pathname === "/aluno/estudo") {
+  if (
+    pathname === "/aluno/chat" ||
+    pathname === "/aluno/estudo" ||
+    pathname === "/aluno/historico"
+  ) {
     return null;
   }
 

@@ -6,6 +6,19 @@
 
 ---
 
+## 2026-05-17 - Etapa 3 do fluxo continuo do aluno
+
+- `/aluno/historico` deixou de ser uma lista simples e virou uma linha do tempo de estudo com visual mais vivo, cards translucidos, filtros destacados e metricas rapidas de conversas salvas, movimentos do dia e areas estudadas.
+- A tela agora destaca a ultima conversa do aluno com atalhos diretos para continuar no chat ou transformar a conversa em estudo ativo.
+- Cada conversa do historico ganhou acoes explicitas: "Continuar" abre o chat persistido e "Criar estudo" abre `/aluno/estudo?conversationId=...`, mantendo a continuidade entre duvida, revisao e artefato.
+- O empty state foi refinado para orientar o primeiro movimento sem parecer tela morta, com atalhos para chat e estudo ativo.
+- O header do chat ganhou acesso rapido para "Materiais", inclusive um botao compacto no mobile, para o aluno nao ficar preso na conversa sem caminho de volta ao historico.
+- O seletor demo de tenant tambem fica oculto em `/aluno/historico`, mantendo a tela limpa para validacao do aluno.
+
+Consequencia: a terceira etapa melhora a sensacao de continuidade do produto sem alterar banco, contrato de API ou LLM; a proxima etapa pode focar em microinteracoes/animacoes finais e polimento visual responsivo.
+
+---
+
 ## 2026-05-17 - Etapa 2 do UX de estudo ativo
 
 - `/aluno/estudo` ganhou uma experiência mais premium para artefatos do aluno: seletor visual de formato, superfície mais leve, histórico lateral e rolagem automática até o material gerado.

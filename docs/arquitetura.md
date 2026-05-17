@@ -2,6 +2,9 @@
 
 ## Atualizacao Codex - 2026-05-17
 
+- `/aluno/historico` agora e uma superficie de continuidade do aluno, ainda baseada em `listConversations()`: calcula metricas leves no Server Component, destaca a ultima conversa e encaminha cada item para chat persistido ou `/aluno/estudo?conversationId=...` sem novo contrato de API.
+- `ChatClient` manteve o mesmo contrato com `/api/chat`, mas o header ganhou link para "Materiais" para fechar a navegacao chat -> historico -> estudo ativo, inclusive em mobile.
+- `TenantSwitcher` tambem oculta o seletor demo em `/aluno/historico`, alem de chat e estudo, para nao interferir nas telas principais do aluno.
 - Auth deixou de ser apenas whitelist demo: `src/lib/auth/db-users.ts` valida `users.password_hash` com `src/lib/auth/password.ts` (`scrypt`) e so cai nas contas demo quando o runtime permite dev/demo.
 - `src/lib/runtime/mode.ts` centraliza guardrails de producao. LLM mock, embeddings mock e storage mock chamam `assertMockFallbackAllowed()` antes de mascarar falha de configuracao.
 - `src/lib/audit/log.ts` e a porta central de escrita em `audit_log`; novas features devem usar esse helper para login, dados de aluno, mensagens, uploads, LLM, administracao e comunicados.
