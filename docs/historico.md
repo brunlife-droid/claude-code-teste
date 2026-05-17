@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-05-16 — A1/A4/A5/A6 do aluno com dados reais
+
+- `/aluno/onboarding` deixou os dados fixos e passou a carregar aluno/escola/turma da sessão, salvar apelido em `students.nickname` e registrar consentimento em `consent_log`.
+- `/aluno/trilha` passou a calcular progresso por `student_proficiency` + `habilities`, com próximo passo derivado do menor score BNCC do aluno.
+- `/aluno/acessibilidade` agora persiste o modo escolhido em `students.a11y_mode` e registra a mudança em `audit_log`.
+- `/aluno/mural` ganhou schema/migration para `student_announcements` e `student_announcement_reads`, com leitura/confirmação por aluno e fallback auditável em `audit_log` enquanto a migration 0002 não estiver aplicada no Neon.
+- Criada a camada `src/lib/student/{queries,actions}.ts` para impedir Drizzle direto nas páginas do aluno.
+
+Consequência: a área do aluno fica bem mais perto de um fluxo testável em produção, e os próximos blocos podem focar no chat multimodal e nos artefatos de estudo sem carregar mocks estruturais dessas quatro telas.
+
+---
+
 ## 2026-05-16 — Ajuste de build dos alertas P1
 
 - Corrigida a tipagem de prioridade em `loadTeacherAlerts()` para evitar falha de TypeScript no build da Vercel.

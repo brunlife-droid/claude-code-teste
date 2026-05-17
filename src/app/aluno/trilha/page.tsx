@@ -1,35 +1,52 @@
-import { MapPin, Trophy } from "lucide-react";
-import { Card } from "@/components/ui";
+import { MapPin, Target, Trophy } from "lucide-react";
+import { Badge, Card } from "@/components/ui";
+import { requireRole } from "@/lib/auth/session";
+import { loadStudentLearningPath } from "@/lib/student/queries";
 import { getCurrentTenant } from "@/lib/tenants/server";
-import { TRILHA } from "@/lib/mocks";
 
 export default async function TrilhaPage() {
+  const user = await requireRole("aluno", "responsavel");
   const tenant = await getCurrentTenant();
+  const path = await loadStudentLearningPath({
+    userId: user.id,
+    tenantId: tenant.id,
+  });
 
   return (
     <div className="scroll-thin h-full overflow-y-auto">
       <div className="mx-auto max-w-4xl px-8 py-10">
-        <header>
-          <div className="text-text-faint text-[11.5px] font-semibold tracking-widest uppercase">
-            Sua trilha · 2º bimestre
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="text-text-faint text-[11.5px] font-semibold tracking-widest uppercase">
+              Sua trilha - 2º bimestre
+            </div>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+              Onde você está nas matérias
+            </h1>
+            <p className="text-text-muted mt-2 max-w-xl text-[15px] leading-relaxed">
+              Cada barra mostra habilidades BNCC já consolidadas e o próximo
+              ponto bom para estudar com a tutora.
+            </p>
           </div>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            Onde você está nas matérias
-          </h1>
-          <p className="text-text-muted mt-2 max-w-xl text-[15px] leading-relaxed">
-            Cada barra mostra quantas habilidades você já dominou no bimestre.
-            Sem competição com ninguém — só você e seu progresso.
-          </p>
+          <Badge tone="primary">
+            {path.mastered}/{path.total} habilidades
+          </Badge>
         </header>
 
-        {/* Próximo passo destaque */}
         <div
-          className="mt-8 flex items-center gap-5 rounded-2xl p-6"
+          className="mt-8 flex flex-col gap-5 rounded-lg p-6 sm:flex-row sm:items-center"
           style={{ background: tenant.primary, color: tenant.primaryFg }}
         >
           <div className="relative size-20 shrink-0">
             <svg viewBox="0 0 100 100" className="size-full -rotate-90">
-              <circle cx="50" cy="50" r="42" stroke="rgba(255,255,255,0.2)" strokeWidth="8" fill="none" />
+              <circle
+                cx="50"
+                cy="50"
+                r="42"
+                stroke="rgba(255,255,255,0.2)"
+                strokeWidth="8"
+                fill="none"
+              />
               <circle
                 cx="50"
                 cy="50"
@@ -37,70 +54,68 @@ export default async function TrilhaPage() {
                 stroke={tenant.secondary}
                 strokeWidth="8"
                 fill="none"
-                strokeDasharray={`${(62 / 100) * 264} 264`}
+                strokeDasharray={`${(path.percent / 100) * 264} 264`}
                 strokeLinecap="round"
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center text-lg font-bold">
-              62%
+              {path.percent}%
             </div>
           </div>
-          <div>
-            <div className="text-sm opacity-85">Próximo passo</div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm opacity-90">
+              <Target size={15} />
+              Próximo passo
+            </div>
             <div className="mt-1 text-xl font-semibold tracking-tight">
-              Razão e proporção
+              {path.nextSkill}
             </div>
-            <div className="mt-1 text-sm opacity-85">
-              Matemática · 3 atividades curtas pra dominar
-            </div>
+            <div className="mt-1 text-sm opacity-85">{path.nextHint}</div>
           </div>
         </div>
 
-        {/* Disciplinas */}
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
-          {TRILHA.map((d) => (
-            <Card key={d.area} className="p-5">
-              <div className="flex items-center justify-between">
-                <div className="text-base font-semibold">{d.area}</div>
+          {path.areas.map((area) => (
+            <Card key={area.area} className="p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-base font-semibold">{area.area}</div>
                 <span
                   className="text-text-faint text-[11px]"
                   style={{ fontFamily: "var(--font-mono)" }}
                 >
-                  {d.dominado}/{d.total}
+                  {area.mastered}/{area.total}
                 </span>
               </div>
               <div className="bg-surface-3 mt-3 h-2 overflow-hidden rounded-full">
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
-                    width: `${(d.dominado / d.total) * 100}%`,
-                    background: d.cor,
+                    width: `${area.percent}%`,
+                    background: area.color,
                   }}
                 />
               </div>
-              <div className="mt-3 flex items-center gap-2 text-sm">
-                <MapPin size={13} className="text-text-faint" />
+              <div className="mt-3 flex items-start gap-2 text-sm">
+                <MapPin size={13} className="text-text-faint mt-0.5" />
                 <span className="text-text-muted">
-                  Estudando: <b className="text-text">{d.atual}</b>
+                  Estudando: <b className="text-text">{area.current}</b>
                 </span>
               </div>
               <div className="text-text-faint mt-1 text-xs">
-                A seguir: {d.proximo}
+                A seguir: {area.next}
               </div>
             </Card>
           ))}
         </div>
 
-        {/* Conquista */}
         <Card className="bg-success-soft mt-6 flex gap-4 p-5">
           <Trophy size={24} className="text-success-fg mt-0.5 shrink-0" />
           <div>
             <div className="text-success-fg text-[15px] font-semibold">
-              Você dominou frações!
+              {path.achievementTitle}
             </div>
             <div className="text-success-fg/85 mt-1 text-sm leading-relaxed">
-              14 habilidades de matemática consolidadas. Você pode partir pra
-              razões e proporção tranquilo.
+              {path.achievementBody}
             </div>
           </div>
         </Card>

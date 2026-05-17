@@ -2,7 +2,7 @@
 
 > **Atualizar este arquivo sempre que o estado do projeto mudar.** Foto rápida do que está pronto, o que está em andamento e o que ainda não foi tocado.
 >
-> Última atualização: 2026-05-16 (P1 alertas pedagógicos reais)
+> Última atualização: 2026-05-16 (A1/A4/A5/A6 aluno reais)
 
 ---
 
@@ -10,7 +10,7 @@
 
 - **Deploy alvo**: `claude-code-teste.vercel.app` (projeto `claude-code-teste` na org `brunlife-6820's`).
 - **Branch deployada**: `main`. PR #1 (`feat: tutora socrática v4.3 + RAG + admin LLM`) foi mergeado (squash) em `25dffd4` em 2026-05-15.
-- **Banco Neon**: projeto `nexus-education` em `AWS South America East 1 (São Paulo)`. Migration `0001_class_materials_focus_and_llm_config.sql` aplicada via SQL Editor do Neon — validado que `class_focus_skills`, `llm_routes`, `system_prompts` e coluna `documents.class_id` existem.
+- **Banco Neon**: projeto `nexus-education` em `AWS South America East 1 (São Paulo)`. Migration `0001_class_materials_focus_and_llm_config.sql` aplicada via SQL Editor do Neon — validado que `class_focus_skills`, `llm_routes`, `system_prompts` e coluna `documents.class_id` existem. Migration `0002_student_announcements.sql` foi adicionada ao repo para mural real; enquanto ela não for aplicada no Neon, a leitura dos recados demo cai em fallback via `audit_log`.
 - **Env vars configuradas na Vercel** (Production):
   - `DATABASE_URL` ✅
   - `OPENROUTER_API_KEY` ✅
@@ -40,6 +40,7 @@
 - Multi-tenant foundation (middleware + tabela `tenants` + tokens CSS por tenant)
 - Deploy Vercel forçado em `gru1` (São Paulo)
 - **Loop do Aluno completo**: chat A2 persiste no DB (conversations + messages), histórico A3 lê do Postgres com agrupamento por data e filtros reais por `?q=`/`?area=`, `?id=` reabre conversa antiga. Graceful sem `DATABASE_URL` (cai pra modo efêmero).
+- **Área do Aluno A1/A4/A5/A6 real**: `/aluno/onboarding` lê dados reais do aluno/escola/turma, grava apelido em `students.nickname` e consentimento em `consent_log`; `/aluno/trilha` calcula progresso por `student_proficiency` + `habilities`; `/aluno/acessibilidade` persiste `students.a11yMode`; `/aluno/mural` lê recados tenant/school/class de `student_announcements` e registra leitura em `student_announcement_reads`, com fallback auditável em `audit_log` enquanto a migration 0002 não estiver aplicada.
 - **Auth real enforced**: `/aluno`, `/professor`, `/secretaria`, `/admin` exigem sessão via `requireRole(...)` no layout. `/api/chat` retorna 401/403 sem sessão. Login redireciona por papel pra `getLayerHomePath(role)`. Ownership de conversation validada por `studentId` da sessão (não mais teatro). As áreas autenticadas têm botão "Sair" no shell, com logout via NextAuth e retorno para `/entrar`.
 - **Tenants do DB**: `getCurrentTenant()` lê do Postgres com seed idempotente das 3 prefeituras. Fallback in-code se não houver `DATABASE_URL`. White-label dinâmico funciona (`?tenant=pousoalegre` muda cores/nome do tutor).
 - **Seed da rede (Alfenas 7º A)**: usuários demo (incluindo João antes da FK de aluno), 3 demo non-students (Ricardo prof, Cláudia sec, Bruno admin) + memberships idempotentes com update explícito de escopo; `loadTeacherContext()` também repara/faz fallback do vínculo demo do Ricardo se o Neon estiver com row antiga. Há 12 alunos no 7º A (João linkado ao user), 9 habilidades BNCC e proficiência por aluno×habilidade.
@@ -64,8 +65,9 @@
 - Persistência de planos/provas/correções ainda usa `audit_log` como trilha best-effort; falta tabela dedicada para editar, compartilhar, versionar e buscar artefatos
 - Telas Secretaria S2-S9 e Admin N2-N7/N9: mockadas (N8 e N8b agora reais)
 - IDEB gráfico e Indicadores Nexus na S1 seguem com dados do mock
-- WhatsApp, OCR, áudio: nada começado (PDF e RAG agora funcionais via /professor/turma)
-- `audit_log`: já recebe artefatos LLM do professor; ainda faltam writes para todas as ações sensíveis. `consent_log` segue sem fluxo implementado.
+- Chat multimodal real ainda não está fechado: upload de imagem existe e persiste Blob, mas a IA ainda recebe apenas marcador textual; áudio/OCR/documentos do aluno e análise visual/audio pelo gateway LLM ficam para a próxima fatia.
+- Artefatos de estudo do aluno (cartões, quiz interativo, resumo guiado estilo NotebookLM) ainda não têm tabela/UX própria. Devem reutilizar o gateway `src/lib/llm/` e preferencialmente nascer como artefatos persistidos do aluno, não como mock.
+- `audit_log`: já recebe artefatos LLM do professor e fallback de leitura de mural do aluno; ainda faltam writes para todas as ações sensíveis.
 - Override de config LLM por tenant (hoje só macro global)
 
 ## Próximos passos sugeridos (em discussão)

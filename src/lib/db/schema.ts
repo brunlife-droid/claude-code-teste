@@ -282,6 +282,67 @@ export const studentProficiency = pgTable(
   }),
 );
 
+export const studentAnnouncements = pgTable(
+  "student_announcements",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "restrict" }),
+    schoolId: text("school_id"),
+    classId: text("class_id"),
+    origin: text("origin").notNull(), // secretaria | escola | turma
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    authorName: text("author_name").notNull(),
+    priority: text("priority").notNull().default("media"),
+    requiresConfirmation: boolean("requires_confirmation")
+      .notNull()
+      .default(false),
+    publishedAt: timestamp("published_at").notNull().defaultNow(),
+    expiresAt: timestamp("expires_at"),
+    createdBy: text("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantIdx: index("student_announcements_tenant_idx").on(t.tenantId),
+    scopeIdx: index("student_announcements_scope_idx").on(
+      t.tenantId,
+      t.schoolId,
+      t.classId,
+    ),
+    publishedIdx: index("student_announcements_published_idx").on(
+      t.publishedAt,
+    ),
+  }),
+);
+
+export const studentAnnouncementReads = pgTable(
+  "student_announcement_reads",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "restrict" }),
+    announcementId: text("announcement_id")
+      .notNull()
+      .references(() => studentAnnouncements.id, { onDelete: "cascade" }),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at").notNull().defaultNow(),
+    confirmedAt: timestamp("confirmed_at"),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.announcementId, t.studentId] }),
+    tenantIdx: index("student_announcement_reads_tenant_idx").on(t.tenantId),
+    studentIdx: index("student_announcement_reads_student_idx").on(
+      t.studentId,
+    ),
+  }),
+);
+
 // ═══════════════════════════════════════════════════════════════════
 // CONVERSAS (tenant-scoped)
 // ═══════════════════════════════════════════════════════════════════

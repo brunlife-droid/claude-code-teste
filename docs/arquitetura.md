@@ -34,6 +34,7 @@ src/
   lib/
     db/               # Drizzle schema + cliente + seed-demo
     chat/             # persistência de conversations/messages
+    student/          # queries/actions do aluno (onboarding, trilha, a11y, mural)
     llm/              # gateway + providers + capabilities + prompts
     auth/             # NextAuth config
     storage/          # abstração Vercel Blob
@@ -86,6 +87,14 @@ O `CLAUDE.md` continua sendo a documentação humana do workflow; os hooks são 
 - `/aluno/historico` usa `listConversations()` e aplica filtros leves via search params (`q` e `area`) no Server Component, mantendo URL compartilhável sem estado client-side.
 - Ownership de conversation validado por `studentId` derivado da sessão antes de retomar (`?id=`) ou continuar via API (proteção contra IDOR).
 
+### Contexto do aluno (A1/A4/A5/A6)
+- `src/lib/student/queries.ts` centraliza leitura das telas do aluno: perfil/onboarding, trilha BNCC, acessibilidade e mural. Todas as queries são graceful e filtradas por `tenantId` + `studentId` resolvido da sessão.
+- `src/lib/student/actions.ts` concentra mutações do aluno via Server Actions: onboarding/consentimento, preferência de acessibilidade e leitura de recados. Ações sensíveis escrevem `audit_log` best-effort.
+- A1 grava `students.nickname` e insere linha em `consent_log` com escopos de tutoria, memória pedagógica, RAG da turma e escalonamento SRE.
+- A4 calcula a trilha a partir de `student_proficiency` + `habilities`, agrupando por área BNCC e escolhendo próximo passo pelo menor score.
+- A6 persiste um único modo em `students.a11y_mode` (`none`, `easy-read`, `dyslexia`, `tdah`). Preferências mais finas exigem coluna/tabela própria futura.
+- A5 usa as novas tabelas `student_announcements` e `student_announcement_reads` (migration `0002_student_announcements.sql`) para recados por tenant/escola/turma e confirmação de leitura. Como a migration pode ainda não existir em produção, o mural cai para recados demo e persiste leitura em `audit_log` para manter o fluxo testável.
+
 ### Auth + autorização
 - NextAuth v5 (Credentials provider com whitelist demo enquanto `DATABASE_URL` não tem users seedados).
 - **Server**: `src/lib/auth/session.ts` exporta `requireAuth()` e `requireRole(...)` — Server Components/layouts chamam isso no topo. Não logado vira redirect pra `/entrar?callbackUrl=<x-pathname>`; papel errado vira redirect pra própria home do papel (`getLayerHomePath`).
@@ -98,8 +107,9 @@ O `CLAUDE.md` continua sendo a documentação humana do workflow; os hooks são 
 ### Headers do middleware
 `src/middleware.ts` injeta dois headers em toda request: `x-tenant-id` (tenant resolvido) e `x-pathname` (path original) — Server Components leem via `headers()`.
 
-### Queries por papel (Professor / Secretaria / Admin)
+### Queries por papel (Aluno / Professor / Secretaria / Admin)
 Pra evitar Server Components fazerem Drizzle direto, cada área tem um módulo de queries:
+- `src/lib/student/queries.ts`: `loadStudentContext`, `loadStudentLearningPath`, `loadStudentAnnouncements`.
 - `src/lib/teacher/queries.ts`: `loadTeacherContext`, `loadDashboardKpis`, `loadTeacherAlerts`, `loadTopStudents`, `loadClassHeatmap`, `loadClassRoster`, `loadStudentProfile`, `scoreToProficiency`.
 - `src/lib/secretaria/queries.ts`: `loadNetworkKpis`, `loadSchoolsHealth`.
 - `src/lib/admin/queries.ts` (futuro).
