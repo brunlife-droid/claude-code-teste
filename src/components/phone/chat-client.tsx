@@ -411,7 +411,26 @@ export function ChatClient({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="relative isolate flex h-full min-h-0 flex-col overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            "linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, #ffffff) 0%, #f8fbff 34%, color-mix(in srgb, var(--secondary) 10%, #ffffff) 100%)",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.34]"
+        style={{
+          backgroundImage:
+            "linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)",
+          backgroundSize: "36px 36px",
+          maskImage:
+            "linear-gradient(180deg, transparent 0, black 120px, black calc(100% - 160px), transparent 100%)",
+        }}
+      />
       <ChatHeader
         tenant={tenant}
         tutorInitial={tutorInitial}
@@ -429,9 +448,11 @@ export function ChatClient({
           />
 
           <div className="text-text-faint flex items-center justify-center gap-2 text-[11.5px]">
-            <span className="bg-border h-px flex-1" />
-            <span>Hoje</span>
-            <span className="bg-border h-px flex-1" />
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-border" />
+            <span className="border-border bg-surface/80 rounded-full border px-2 py-0.5 shadow-[var(--shadow-xs)]">
+              Hoje
+            </span>
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-border" />
           </div>
 
           {messages.map((m, i) => (
@@ -440,7 +461,6 @@ export function ChatClient({
               message={m}
               tutorInitial={tutorInitial}
               tutorPrimary={tenant.primary}
-              tutorSoft={tenant.primarySoft}
             />
           ))}
 
@@ -456,7 +476,7 @@ export function ChatClient({
 
       <form
         onSubmit={handleSend}
-        className="border-border/80 bg-surface-raised/95 shrink-0 border-t px-4 py-3 shadow-[0_-10px_28px_rgba(16,24,40,0.06)] sm:px-6 sm:py-4"
+        className="shrink-0 border-t border-white/60 bg-white/72 px-4 py-3 shadow-[0_-18px_44px_rgba(16,24,40,0.10)] backdrop-blur-xl sm:px-6 sm:py-4"
       >
         <input
           ref={fileInputRef}
@@ -479,20 +499,13 @@ export function ChatClient({
             </div>
           )}
 
-          <div className="border-border-strong bg-surface-raised focus-within:border-primary focus-within:shadow-[0_0_0_4px_var(--primary-soft)] flex items-end gap-1.5 rounded-lg border p-2 shadow-[var(--shadow-sm)] transition-all sm:gap-2 sm:p-3">
-            <ComposerIconButton
-              label="Anexar arquivo"
-              icon={Paperclip}
-              disabled={uploading || sending}
-              onClick={() => fileInputRef.current?.click()}
-            />
-            <ComposerIconButton
-              label="Enviar foto"
-              icon={ImageIcon}
-              disabled={uploading || sending}
-              onClick={() => fileInputRef.current?.click()}
-            />
-
+          <div
+            className="flex flex-col gap-2 rounded-lg border border-white/80 p-2 shadow-[0_18px_48px_rgba(16,24,40,0.14)] transition-all focus-within:border-primary focus-within:shadow-[0_0_0_4px_var(--primary-soft),0_18px_48px_rgba(16,24,40,0.14)] sm:p-3"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.98), color-mix(in srgb, var(--primary) 4%, #ffffff))",
+            }}
+          >
             <textarea
               ref={textareaRef}
               rows={1}
@@ -500,28 +513,47 @@ export function ChatClient({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleComposerKeyDown}
               disabled={sending || uploading}
-              placeholder="Pergunte, cole sua dúvida ou descreva o arquivo..."
-              className="placeholder:text-text-faint max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-[15px] leading-relaxed outline-none"
+              placeholder="Pergunte ou envie um arquivo..."
+              className="placeholder:text-text-faint max-h-32 min-h-10 w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-relaxed outline-none"
             />
 
-            <ComposerIconButton
-              label="Enviar áudio"
-              icon={Mic}
-              disabled={uploading || sending}
-              onClick={() => fileInputRef.current?.click()}
-            />
-            <button
-              type="submit"
-              aria-label="Enviar mensagem"
-              disabled={!input.trim() || sending || uploading}
-              className="grid size-10 shrink-0 place-items-center rounded-md shadow-[var(--shadow-xs)] transition-all hover:-translate-y-px disabled:translate-y-0 disabled:opacity-40"
-              style={{
-                background: tenant.primary,
-                color: tenant.primaryFg,
-              }}
-            >
-              <ArrowUp size={18} />
-            </button>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1">
+                <ComposerIconButton
+                  label="Anexar arquivo"
+                  icon={Paperclip}
+                  disabled={uploading || sending}
+                  onClick={() => fileInputRef.current?.click()}
+                />
+                <ComposerIconButton
+                  label="Enviar foto"
+                  icon={ImageIcon}
+                  disabled={uploading || sending}
+                  onClick={() => fileInputRef.current?.click()}
+                />
+              </div>
+
+              <div className="flex items-center gap-1">
+                <ComposerIconButton
+                  label="Enviar áudio"
+                  icon={Mic}
+                  disabled={uploading || sending}
+                  onClick={() => fileInputRef.current?.click()}
+                />
+                <button
+                  type="submit"
+                  aria-label="Enviar mensagem"
+                  disabled={!input.trim() || sending || uploading}
+                  className="grid size-10 shrink-0 place-items-center rounded-md shadow-[var(--shadow-xs)] transition-all hover:-translate-y-px disabled:translate-y-0 disabled:opacity-40"
+                  style={{
+                    background: tenant.primary,
+                    color: tenant.primaryFg,
+                  }}
+                >
+                  <ArrowUp size={18} />
+                </button>
+              </div>
+            </div>
           </div>
           <div className="text-text-faint mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-[11px]">
             <span>{tenant.tutorName} guia o raciocínio sem entregar tudo pronto.</span>
@@ -543,13 +575,14 @@ function ChatHeader({
   busy: boolean;
 }) {
   return (
-    <header className="border-border/80 bg-surface-raised/95 shrink-0 border-b px-4 py-3 shadow-[var(--shadow-xs)] sm:px-6">
+    <header className="shrink-0 border-b border-white/70 bg-white/78 px-4 py-3 shadow-[0_8px_24px_rgba(16,24,40,0.06)] backdrop-blur-xl sm:px-6">
       <div className="mx-auto flex max-w-[980px] items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div
-            className="relative grid size-10 shrink-0 place-items-center rounded-lg text-base font-semibold shadow-[var(--shadow-sm)]"
+            className="relative grid size-10 shrink-0 place-items-center rounded-lg text-base font-semibold shadow-[0_10px_24px_rgba(16,24,40,0.12)]"
             style={{
-              background: tenant.primarySoft,
+              background:
+                "linear-gradient(135deg, var(--primary-soft), #ffffff)",
               color: tenant.primary,
               fontFamily: "var(--font-serif)",
             }}
@@ -575,7 +608,7 @@ function ChatHeader({
         </div>
         <Link
           href="/aluno/estudo"
-          className="border-primary-border bg-primary-soft text-primary hidden items-center gap-2 rounded-md border px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-surface-tint sm:inline-flex"
+          className="border-primary-border bg-primary-soft text-primary lift-on-hover hidden items-center gap-2 rounded-md border px-3 py-2 text-[12.5px] font-medium sm:inline-flex"
         >
           <Layers3 size={14} />
           Estudo ativo
@@ -599,11 +632,22 @@ function StudyKickoffPanel({
   onPick: (text: string) => void;
 }) {
   return (
-    <section className="soft-band rounded-lg p-3 shadow-[var(--shadow-sm)] sm:p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+    <section
+      className="rounded-lg border border-white/70 p-3 shadow-[0_16px_42px_rgba(16,24,40,0.10)] sm:p-4"
+      style={{
+        background:
+          "linear-gradient(135deg, rgba(255,255,255,0.92), color-mix(in srgb, var(--primary) 10%, #ffffff) 48%, color-mix(in srgb, var(--secondary) 12%, #ffffff))",
+      }}
+    >
+      <div className="flex flex-col gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles size={16} style={{ color: tenant.primary }} />
+            <span
+              className="grid size-7 place-items-center rounded-md"
+              style={{ background: tenant.primary, color: tenant.primaryFg }}
+            >
+              <Sparkles size={15} />
+            </span>
             Escolha um começo para estudar melhor
           </div>
           <p className="text-text-muted mt-1 text-[13px] leading-relaxed">
@@ -619,7 +663,7 @@ function StudyKickoffPanel({
                 <Link
                   key={action.label}
                   href={studyHref}
-                  className={`lift-on-hover flex min-h-[76px] items-start gap-2 rounded-lg border p-3 text-left ${action.tone}`}
+                  className={`lift-on-hover flex min-h-[82px] items-start gap-2 rounded-md border bg-white/78 p-3 text-left shadow-[var(--shadow-xs)] backdrop-blur ${action.tone}`}
                 >
                   <Icon size={17} className="mt-0.5 shrink-0" />
                   <span className="min-w-0">
@@ -641,7 +685,7 @@ function StudyKickoffPanel({
                 onClick={() =>
                   action.kind === "upload" ? onAttach() : onPick(action.prompt)
                 }
-                className={`lift-on-hover flex min-h-[76px] items-start gap-2 rounded-lg border p-3 text-left disabled:opacity-50 ${action.tone}`}
+                className={`lift-on-hover flex min-h-[82px] items-start gap-2 rounded-md border bg-white/78 p-3 text-left shadow-[var(--shadow-xs)] backdrop-blur disabled:opacity-50 ${action.tone}`}
               >
                 <Icon size={17} className="mt-0.5 shrink-0" />
                 <span className="min-w-0">
@@ -671,13 +715,13 @@ function FollowUpActions({
   onPick: (text: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="ml-0 flex flex-wrap gap-2 sm:ml-12">
       <button
         type="button"
         onClick={() => onPick("Pode explicar de outro jeito?")}
         className="cursor-pointer"
       >
-        <Chip className="hover:bg-surface-3">
+        <Chip className="border-white/80 bg-white/82 shadow-[var(--shadow-xs)] hover:bg-surface-3">
           <Sparkles size={11} style={{ color: primary }} />
           Explicar de outro jeito
         </Chip>
@@ -686,19 +730,19 @@ function FollowUpActions({
         type="button"
         onClick={() => onPick("Me dá um exemplo prático.")}
       >
-        <Chip className="hover:bg-surface-3">
+        <Chip className="border-white/80 bg-white/82 shadow-[var(--shadow-xs)] hover:bg-surface-3">
           <Lightbulb size={11} />
           Me dá um exemplo
         </Chip>
       </button>
       <button type="button" onClick={() => onPick("Ler em áudio.")}>
-        <Chip className="hover:bg-surface-3">
+        <Chip className="border-white/80 bg-white/82 shadow-[var(--shadow-xs)] hover:bg-surface-3">
           <Volume2 size={11} />
           Ouvir em áudio
         </Chip>
       </button>
       <Link href={studyHref}>
-        <Chip className="hover:bg-surface-3">
+        <Chip className="border-white/80 bg-white/82 shadow-[var(--shadow-xs)] hover:bg-surface-3">
           <FileText size={11} />
           Criar estudo
         </Chip>
@@ -736,12 +780,10 @@ function MessageBubble({
   message,
   tutorInitial,
   tutorPrimary,
-  tutorSoft,
 }: {
   message: ChatClientMessage;
   tutorInitial: string;
   tutorPrimary: string;
-  tutorSoft: string;
 }) {
   if (message.role === "user") {
     return (
@@ -753,7 +795,14 @@ function MessageBubble({
           />
         ))}
         {message.content && (
-          <div className="border-primary-border bg-primary-soft text-text max-w-[86%] rounded-lg rounded-tr-sm border px-4 py-3 text-[15px] leading-relaxed shadow-[var(--shadow-xs)] sm:max-w-[74%]">
+          <div
+            className="text-text max-w-[86%] rounded-lg rounded-tr-sm border px-4 py-3 text-[15px] leading-relaxed shadow-[0_10px_28px_rgba(16,24,40,0.08)] sm:max-w-[74%]"
+            style={{
+              background:
+                "linear-gradient(135deg, var(--primary-soft), color-mix(in srgb, var(--primary) 8%, #ffffff))",
+              borderColor: "var(--primary-border)",
+            }}
+          >
             {message.content}
             {message.hora && (
               <div className="text-text-faint mt-1.5 text-right text-[11px]">
@@ -769,9 +818,10 @@ function MessageBubble({
   return (
     <article className="flex gap-2.5 sm:gap-3">
       <div
-        className="grid size-9 shrink-0 place-items-center rounded-lg text-sm font-semibold shadow-[var(--shadow-xs)]"
+        className="grid size-9 shrink-0 place-items-center rounded-lg text-sm font-semibold shadow-[0_10px_24px_rgba(16,24,40,0.10)]"
         style={{
-          background: tutorSoft,
+          background:
+            "linear-gradient(135deg, var(--primary-soft), #ffffff)",
           color: tutorPrimary,
           fontFamily: "var(--font-serif)",
         }}
@@ -779,7 +829,14 @@ function MessageBubble({
         {tutorInitial}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="border-border bg-surface-raised relative rounded-lg rounded-tl-sm border px-4 py-3 text-[15px] leading-relaxed shadow-[var(--shadow-sm)]">
+        <div
+          className="relative rounded-lg rounded-tl-sm border px-4 py-3 text-[15px] leading-relaxed shadow-[0_12px_32px_rgba(16,24,40,0.09)]"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.98), color-mix(in srgb, var(--primary) 3%, #ffffff))",
+            borderColor: "color-mix(in srgb, var(--primary) 12%, var(--border))",
+          }}
+        >
           <div
             className="absolute top-3 bottom-3 left-0 w-1 rounded-r-full"
             style={{ background: tutorPrimary }}

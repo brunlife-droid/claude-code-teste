@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ALL_TENANTS, type TenantId } from "@/lib/tenants";
 import { cn } from "@/lib/cn";
 
@@ -10,8 +10,13 @@ import { cn } from "@/lib/cn";
  * Em produção real isso só aparece para usuários admin.
  */
 export function TenantSwitcher({ current }: { current: TenantId }) {
+  const pathname = usePathname();
   const router = useRouter();
   const params = useSearchParams();
+
+  if (pathname === "/aluno/chat") {
+    return null;
+  }
 
   const handleSwitch = (id: TenantId) => {
     const next = new URLSearchParams(params);

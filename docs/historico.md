@@ -8,12 +8,13 @@
 
 ## 2026-05-17 - Etapa 1 do UX do chat do aluno
 
+- Depois da validacao visual do Bruno, o chat recebeu um refinamento para parecer menos quadrado e mais vivo: canvas com gradiente leve, grade sutil, header translucido, composer mais premium e bolhas com mais profundidade.
 - `src/components/phone/chat-client.tsx` ganhou um redesign focado em engajamento: header compacto da tutora, ações rápidas, composer multilinha e feedback claro para upload/resposta da IA.
 - As bolhas da tutora ficaram mais estruturadas visualmente, com superfície própria, indicador de pensamento e bloco de fontes da turma mais legível quando o RAG retorna materiais.
 - O envio de mensagem passou a usar textarea responsivo com `Shift+Enter` para quebra de linha e botões de ferramenta com rótulos acessíveis.
 - `src/app/aluno/layout.tsx` agora usa uma grade responsiva: sidebar completa no desktop e navegação inferior no mobile, evitando que o chat fique espremido em telas pequenas.
 - `src/components/shell/aluno-sidebar.tsx` foi reorganizada para deixar navegação e configuração antes de "Recentes", atendendo à validação de UX da etapa.
-- O seletor visual de tenant demo fica oculto no mobile para não cobrir o composer do chat e a navegação inferior.
+- O seletor visual de tenant demo fica oculto no mobile e na rota `/aluno/chat` para nao cobrir o composer do chat e a navegacao inferior.
 - `AGENTS.md` registra a nova regra operacional pedida pelo Bruno: todo fechamento deve trazer 3 sugestões de melhorias ou tarefas relacionadas.
 
 Consequencia: a primeira etapa melhora a primeira impressão do aluno no chat sem alterar contrato de API, persistência ou LLM; a próxima etapa pode focar nos cartões premium.
