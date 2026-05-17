@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { auditLog } from "@/lib/db/schema";
+import { auditLog, studentArtifacts } from "@/lib/db/schema";
 import type { ChatCompletionResponse } from "@/lib/llm";
 
 export type StudentArtifactKind = "flashcards" | "quiz" | "summary";
@@ -53,40 +53,149 @@ export async function loadStudentArtifacts(input: {
 }): Promise<StudentArtifact[]> {
   if (!dbAvailable()) return [];
 
+  const limit = input.limit ?? 8;
+  let dedicated: StudentArtifact[] = [];
   try {
-    const limit = input.limit ?? 8;
-    const rows = await db()
-      .select({
-        id: auditLog.id,
-        targetId: auditLog.targetId,
-        metadata: auditLog.metadata,
-        createdAt: auditLog.createdAt,
-      })
-      .from(auditLog)
-      .where(
-        and(
-          eq(auditLog.tenantId, input.tenantId),
-          eq(auditLog.action, "student_artifact.create"),
-        ),
-      )
-      .orderBy(desc(auditLog.createdAt))
-      .limit(limit * 5);
+    dedicated = await loadStudentArtifactsFromTable(input, limit);
+  } catch (err) {
+    logPersistenceFallback("[student/artifacts] student_artifacts read", err);
+  }
 
-    return rows
-      .filter((row) => {
-        const metadata = row.metadata ?? {};
-        return (
-          metadata.actorUserId === input.actorUserId ||
-          (!!input.studentId && metadata.studentId === input.studentId)
-        );
-      })
-      .slice(0, limit)
-      .map((row) => normalizeArtifactRow(row))
-      .filter((item): item is StudentArtifact => !!item);
+  try {
+    const legacy = await loadStudentArtifactsFromAudit(input, limit);
+    return mergeArtifacts(dedicated, legacy, limit);
   } catch (err) {
     console.error("[student/artifacts] loadStudentArtifacts failed:", err);
-    return [];
+    return dedicated;
   }
+}
+
+async function loadStudentArtifactsFromTable(
+  input: {
+    tenantId: string;
+    actorUserId: string;
+    studentId: string | null;
+  },
+  limit: number,
+): Promise<StudentArtifact[]> {
+  const identityFilter = input.studentId
+    ? or(
+        eq(studentArtifacts.studentId, input.studentId),
+        eq(studentArtifacts.actorUserId, input.actorUserId),
+      )
+    : eq(studentArtifacts.actorUserId, input.actorUserId);
+
+  const rows = await db()
+    .select({
+      id: studentArtifacts.id,
+      kind: studentArtifacts.kind,
+      title: studentArtifacts.title,
+      content: studentArtifacts.content,
+      provider: studentArtifacts.provider,
+      model: studentArtifacts.model,
+      createdAt: studentArtifacts.createdAt,
+    })
+    .from(studentArtifacts)
+    .where(and(eq(studentArtifacts.tenantId, input.tenantId), identityFilter))
+    .orderBy(desc(studentArtifacts.createdAt))
+    .limit(limit);
+
+  return rows
+    .map((row) => normalizeDedicatedArtifactRow(row))
+    .filter((item): item is StudentArtifact => !!item);
+}
+
+async function loadStudentArtifactsFromAudit(
+  input: {
+    tenantId: string;
+    actorUserId: string;
+    studentId: string | null;
+  },
+  limit: number,
+): Promise<StudentArtifact[]> {
+  const rows = await db()
+    .select({
+      id: auditLog.id,
+      targetId: auditLog.targetId,
+      metadata: auditLog.metadata,
+      createdAt: auditLog.createdAt,
+    })
+    .from(auditLog)
+    .where(
+      and(
+        eq(auditLog.tenantId, input.tenantId),
+        eq(auditLog.action, "student_artifact.create"),
+      ),
+    )
+    .orderBy(desc(auditLog.createdAt))
+    .limit(limit * 5);
+
+  return rows
+    .filter((row) => {
+      const metadata = row.metadata ?? {};
+      return (
+        metadata.actorUserId === input.actorUserId ||
+        (!!input.studentId && metadata.studentId === input.studentId)
+      );
+    })
+    .slice(0, limit)
+    .map((row) => normalizeAuditArtifactRow(row))
+    .filter((item): item is StudentArtifact => !!item);
+}
+
+function mergeArtifacts(
+  dedicated: StudentArtifact[],
+  legacy: StudentArtifact[],
+  limit: number,
+): StudentArtifact[] {
+  const byId = new Map<string, StudentArtifact>();
+  for (const artifact of [...dedicated, ...legacy]) {
+    if (!byId.has(artifact.id)) byId.set(artifact.id, artifact);
+  }
+  return Array.from(byId.values())
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, limit);
+}
+
+function logPersistenceFallback(context: string, err: unknown): void {
+  const code =
+    typeof err === "object" && err && "code" in err ? err.code : "";
+  const message =
+    typeof err === "object" && err && "message" in err
+      ? String(err.message)
+      : String(err);
+  const expectedDuringMigration =
+    code === "42P01" || message.includes("student_artifacts");
+
+  if (expectedDuringMigration) {
+    console.warn(`${context}: usando fallback enquanto migration 0003 não foi aplicada.`);
+    return;
+  }
+
+  console.error(`${context}: usando fallback por erro de persistência:`, err);
+}
+
+function normalizeDedicatedArtifactRow(row: {
+  id: string;
+  kind: string;
+  title: string;
+  content: Record<string, unknown>;
+  provider: string | null;
+  model: string | null;
+  createdAt: Date;
+}): StudentArtifact | null {
+  const kind = normalizeKind(row.kind);
+  const content = normalizeContent(kind, row.content);
+  if (!content) return null;
+  return {
+    id: row.id,
+    kind,
+    title: row.title.trim() || studentArtifactKindLabel(kind),
+    content,
+    provider: row.provider ?? undefined,
+    model: row.model ?? undefined,
+    createdAt: row.createdAt,
+  };
 }
 
 export async function recordStudentArtifact(input: {
@@ -101,8 +210,35 @@ export async function recordStudentArtifact(input: {
 }): Promise<string | null> {
   if (!dbAvailable()) return null;
 
+  const artifactId = randomUUID();
+  const content = clampArtifactContent(input.content);
+
   try {
-    const artifactId = randomUUID();
+    await db()
+      .insert(studentArtifacts)
+      .values({
+        id: artifactId,
+        tenantId: input.tenantId,
+        actorUserId: input.actorUserId,
+        studentId: input.studentId,
+        conversationId: null,
+        kind: input.kind,
+        title: input.title,
+        content: content as Record<string, unknown>,
+        request: input.request,
+        model: input.result.model,
+        provider: input.result.provider,
+        promptVersion: input.result.promptVersion,
+        inputTokens: input.result.inputTokens,
+        outputTokens: input.result.outputTokens,
+        latencyMs: input.result.latencyMs,
+      });
+    return artifactId;
+  } catch (err) {
+    logPersistenceFallback("[student/artifacts] student_artifacts insert", err);
+  }
+
+  try {
     await db()
       .insert(auditLog)
       .values({
@@ -118,7 +254,7 @@ export async function recordStudentArtifact(input: {
           kind: input.kind,
           title: input.title,
           request: input.request,
-          content: clampArtifactContent(input.content),
+          content,
           model: input.result.model,
           provider: input.result.provider,
           promptVersion: input.result.promptVersion,
@@ -140,7 +276,7 @@ export function studentArtifactKindLabel(kind: StudentArtifactKind): string {
   return "Resumo guiado";
 }
 
-function normalizeArtifactRow(row: {
+function normalizeAuditArtifactRow(row: {
   id: string;
   targetId: string | null;
   metadata: Record<string, unknown> | null;

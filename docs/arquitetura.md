@@ -79,6 +79,7 @@ O `CLAUDE.md` continua sendo a documentação humana do workflow; os hooks são 
 
 ### Auditoria
 - `audit_log` e `consent_log` são tabelas obrigatórias. Toda ação sensível vira log (acesso a dado de aluno, envio de mensagem, alerta SRE).
+- Artefatos gerados por LLM agora têm tabelas dedicadas (`student_artifacts` e `teacher_artifacts`) na migration 0003; `audit_log` fica como trilha/fallback, não como armazenamento primário quando a migration estiver aplicada.
 
 ### Persistência de chat (Aluno)
 - `src/lib/chat/persistence.ts` é a única porta de entrada pra `conversations`/`messages`. Componentes nunca tocam Drizzle direto.
@@ -120,7 +121,7 @@ Pra evitar Server Components fazerem Drizzle direto, cada área tem um módulo d
 Todas as queries seguem o mesmo contrato: graceful (sem DATABASE_URL → retorno vazio), `ensureNetworkSeeded()` chamado no entry point pra garantir dado demo.
 Exceção controlada de demo: `loadTeacherContext()` repara/faz fallback do vínculo `u-ricardo` → `class-demo-7a` quando o Neon estiver com membership antigo sem `class_id`; as queries de roster/heatmap/habilidades também usam ou mesclam os mocks demo se o DB retornar vazio/parcial para essa turma, para não bloquear a validação de produção.
 - `/professor/alunos` usa `loadStudentProfile({ tenantId, classIds, studentId })`, então o perfil só abre alunos das turmas vinculadas ao usuário pedagógico logado. A tela evita exibir PII familiar sem fluxo consentido e se limita ao escopo pedagógico já persistido.
-- `/professor/diario` ainda não tem tabela própria; ele deriva um rascunho pedagógico de `loadClassRoster`, `loadClassFocus` e `loadClassMaterials`, e explicita na UI que salvar/editar/assinar diário fica pendente.
+- `/professor/diario` ainda deriva um rascunho pedagógico de `loadClassRoster`, `loadClassFocus` e `loadClassMaterials`, e explicita na UI que salvar/editar/assinar diário fica pendente. A tabela `pedagogical_diary_entries` já está modelada na migration 0003 para a próxima etapa.
 - `/professor` usa `loadTeacherAlerts()` para derivar alertas de risco, pendência de engajamento e conquista a partir do roster real da turma, sem tabela nova e sempre filtrado por `tenantId` + `classIds`.
 
 ### Capabilities LLM ativas
@@ -157,14 +158,15 @@ Convenção pra nova capability: 1) adicionar rota em `routes.ts` (fallback hard
 - URLs arbitrárias não são baixadas: o processamento só aceita data URL ou host `blob.vercel-storage.com`, evitando SSRF no backend.
 
 ### Artefatos de estudo do aluno
-- `src/lib/student/artifacts.ts` centraliza leitura/gravação dos artefatos do aluno em `audit_log` (`action='student_artifact.create'`). É uma persistência MVP sem migration nova; tabela dedicada continua desejável para busca, edição e compartilhamento.
+- `src/lib/student/artifacts.ts` centraliza leitura/gravação dos artefatos do aluno. A persistência primária é `student_artifacts` (migration 0003), com fallback em `audit_log` (`action='student_artifact.create'`) para ambientes onde o SQL ainda não foi aplicado.
 - `/api/student-artifacts` valida sessão de aluno/responsável, monta contexto por `topic` ou conversa persistida do próprio `studentId`, chama `complete()` com `student_artifact_generation` e normaliza JSON para três contratos: `flashcards`, `quiz`, `summary`.
 - `/aluno/estudo` é a UI interativa: cartões viráveis, quiz com alternativas/explicação e resumo guiado com passos de estudo. O chat linka para essa página passando `conversationId` quando já existe conversa persistida.
+- A tabela já guarda `request`, provider/modelo, versão de prompt, tokens e latência para auditoria/custos; edição, busca avançada, compartilhamento com professor e versionamento ainda ficam para a próxima camada.
 
 ### Artefatos do professor
-- Planos, correções de redação e provas gerados pelo LLM gravam uma trilha best-effort em `audit_log` com `action='teacher_artifact.create'`, `target_type='teacher_artifact'` e `metadata` contendo `actorUserId`, `kind`, `title`, parâmetros, conteúdo limitado e metadados do modelo.
-- `src/lib/teacher/artifacts.ts` centraliza gravação e leitura desses artefatos. Sem `DATABASE_URL` ou com falha de DB, a geração segue funcionando e apenas não persiste.
-- `/professor/biblioteca` lê os últimos artefatos do usuário logado e mostra a seção "Gerados por mim". Isso é ponte de MVP; uma tabela dedicada continua sendo o caminho correto para edição, compartilhamento, busca e versionamento.
+- Planos, correções de redação e provas gerados pelo LLM gravam primeiro em `teacher_artifacts` (migration 0003), com `kind`, `title`, conteúdo limitado, request e metadados de provider/modelo/prompt/tokens/latência.
+- `src/lib/teacher/artifacts.ts` centraliza gravação e leitura desses artefatos. Sem `DATABASE_URL`, sem a migration 0003 ou com falha de DB, a geração segue funcionando e cai no fallback `audit_log` com `action='teacher_artifact.create'`.
+- `/professor/biblioteca` lê os últimos artefatos do usuário logado e mostra a seção "Gerados por mim". Edição, compartilhamento, busca e versionamento ainda dependem de UI/contratos sobre a tabela dedicada.
 
 ### Configuração macro LLM (admin)
 - **Tabelas**: `llm_routes` (PK = capability, uma rota ativa por capability) e `system_prompts` (versionado, índice único parcial garante 1 ativa por capability).

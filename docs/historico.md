@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-17 — Base Neon para artefatos e diário
+
+- Criada a migration `0003_artifacts_diary_and_rls.sql` com tabelas dedicadas para `student_artifacts`, `teacher_artifacts` e `pedagogical_diary_entries`, além de reforço de RLS para tabelas adicionadas depois da política inicial.
+- O schema Drizzle agora conhece essas três tabelas e suas relações principais com tenant, aluno, usuário, conversa e turma.
+- `src/lib/student/artifacts.ts` e `src/lib/teacher/artifacts.ts` passaram a tentar ler/gravar nas tabelas dedicadas primeiro e só cair para `audit_log` quando a migration ainda não existir ou quando o banco recusar a persistência.
+- A migration foi escrita para não quebrar ambientes onde a `0002_student_announcements.sql` ainda não tiver sido aplicada, ignorando tabelas ausentes ao configurar RLS.
+
+Consequência: a aplicação já está preparada para persistência mais limpa no Neon sem quebrar a produção antes da aplicação manual do SQL; depois de aplicar a migration 0003, artefatos deixam de depender do `audit_log` como armazenamento principal.
+
+---
+
 ## 2026-05-17 — Renderização Markdown das respostas da IA
 
 - Criado `LlmMarkdown` como renderizador compartilhado para respostas geradas por LLM, com `react-markdown`, GFM, quebra de linha amigável e HTML bruto desabilitado.

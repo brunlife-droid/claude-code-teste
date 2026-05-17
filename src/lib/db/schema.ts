@@ -510,6 +510,136 @@ export const classFocusSkills = pgTable(
 );
 
 // ═══════════════════════════════════════════════════════════════════
+// ARTEFATOS E DIÁRIO PEDAGÓGICO
+// ═══════════════════════════════════════════════════════════════════
+
+export const studentArtifacts = pgTable(
+  "student_artifacts",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "restrict" }),
+    studentId: text("student_id").references(() => students.id, {
+      onDelete: "cascade",
+    }),
+    actorUserId: text("actor_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    conversationId: text("conversation_id").references(() => conversations.id, {
+      onDelete: "set null",
+    }),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    content: jsonb("content").$type<Record<string, unknown>>().notNull(),
+    request: jsonb("request")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    provider: text("provider"),
+    model: text("model"),
+    promptVersion: text("prompt_version"),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    latencyMs: integer("latency_ms"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantStudentIdx: index("student_artifacts_tenant_student_idx").on(
+      t.tenantId,
+      t.studentId,
+      t.createdAt,
+    ),
+    actorIdx: index("student_artifacts_actor_idx").on(
+      t.actorUserId,
+      t.createdAt,
+    ),
+    conversationIdx: index("student_artifacts_conversation_idx").on(
+      t.conversationId,
+    ),
+  }),
+);
+
+export const teacherArtifacts = pgTable(
+  "teacher_artifacts",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "restrict" }),
+    actorUserId: text("actor_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    request: jsonb("request")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    provider: text("provider"),
+    model: text("model"),
+    promptVersion: text("prompt_version"),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    latencyMs: integer("latency_ms"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantActorIdx: index("teacher_artifacts_tenant_actor_idx").on(
+      t.tenantId,
+      t.actorUserId,
+      t.createdAt,
+    ),
+    kindIdx: index("teacher_artifacts_kind_idx").on(
+      t.tenantId,
+      t.kind,
+      t.createdAt,
+    ),
+  }),
+);
+
+export const pedagogicalDiaryEntries = pgTable(
+  "pedagogical_diary_entries",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "restrict" }),
+    classId: text("class_id")
+      .notNull()
+      .references(() => classes.id, { onDelete: "cascade" }),
+    authorUserId: text("author_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    entryDate: timestamp("entry_date").notNull().defaultNow(),
+    title: text("title").notNull(),
+    summary: text("summary"),
+    content: jsonb("content")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    status: text("status").notNull().default("draft"),
+    signedAt: timestamp("signed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    classDateIdx: index("pedagogical_diary_entries_class_date_idx").on(
+      t.tenantId,
+      t.classId,
+      t.entryDate,
+    ),
+    authorIdx: index("pedagogical_diary_entries_author_idx").on(
+      t.authorUserId,
+      t.createdAt,
+    ),
+  }),
+);
+
+// ═══════════════════════════════════════════════════════════════════
 // CONFIGURAÇÃO MACRO DA LLM (editada pelo Admin Nexus)
 // ═══════════════════════════════════════════════════════════════════
 
@@ -646,10 +776,16 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   classes: many(classes),
   students: many(students),
   conversations: many(conversations),
+  studentArtifacts: many(studentArtifacts),
+  teacherArtifacts: many(teacherArtifacts),
+  pedagogicalDiaryEntries: many(pedagogicalDiaryEntries),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
   memberships: many(memberships),
+  studentArtifacts: many(studentArtifacts),
+  teacherArtifacts: many(teacherArtifacts),
+  pedagogicalDiaryEntries: many(pedagogicalDiaryEntries),
 }));
 
 export const studentsRelations = relations(students, ({ one, many }) => ({
@@ -657,6 +793,7 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   school: one(schools, { fields: [students.schoolId], references: [schools.id] }),
   class: one(classes, { fields: [students.classId], references: [classes.id] }),
   conversations: many(conversations),
+  artifacts: many(studentArtifacts),
 }));
 
 export const conversationsRelations = relations(conversations, ({ one, many }) => ({
@@ -665,6 +802,7 @@ export const conversationsRelations = relations(conversations, ({ one, many }) =
     references: [students.id],
   }),
   messages: many(messages),
+  studentArtifacts: many(studentArtifacts),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
@@ -684,3 +822,51 @@ export const chunksRelations = relations(chunks, ({ one }) => ({
     references: [documents.id],
   }),
 }));
+
+export const studentArtifactsRelations = relations(studentArtifacts, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [studentArtifacts.tenantId],
+    references: [tenants.id],
+  }),
+  student: one(students, {
+    fields: [studentArtifacts.studentId],
+    references: [students.id],
+  }),
+  actor: one(users, {
+    fields: [studentArtifacts.actorUserId],
+    references: [users.id],
+  }),
+  conversation: one(conversations, {
+    fields: [studentArtifacts.conversationId],
+    references: [conversations.id],
+  }),
+}));
+
+export const teacherArtifactsRelations = relations(teacherArtifacts, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [teacherArtifacts.tenantId],
+    references: [tenants.id],
+  }),
+  actor: one(users, {
+    fields: [teacherArtifacts.actorUserId],
+    references: [users.id],
+  }),
+}));
+
+export const pedagogicalDiaryEntriesRelations = relations(
+  pedagogicalDiaryEntries,
+  ({ one }) => ({
+    tenant: one(tenants, {
+      fields: [pedagogicalDiaryEntries.tenantId],
+      references: [tenants.id],
+    }),
+    class: one(classes, {
+      fields: [pedagogicalDiaryEntries.classId],
+      references: [classes.id],
+    }),
+    author: one(users, {
+      fields: [pedagogicalDiaryEntries.authorUserId],
+      references: [users.id],
+    }),
+  }),
+);
