@@ -49,3 +49,7 @@ A atualizacao da documentacao entra no **mesmo commit** da mudanca de codigo, na
 - Portugues do Brasil em UI, mensagens de erro, commits e respostas ao usuario.
 - Variaveis e identificadores em ingles; strings de UI em pt-BR.
 - Commits seguem o padrao atual: descritivo, no imperativo e em pt-BR.
+
+## Fechamento de cada acao
+
+Ao terminar qualquer acao para o Bruno, sempre incluir no fechamento 3 sugestoes objetivas de melhorias ou tarefas pendentes relacionadas ao que acabou de ser feito.

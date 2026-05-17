@@ -15,6 +15,7 @@
 - `9999_rls_policies.sql` aplica `FORCE ROW LEVEL SECURITY` nas tabelas tenant-scoped, incluindo anuncios, artefatos, diario e foco de turma.
 - Seeds/fallbacks demo de aluno/professor sao bloqueados em producao salvo `NEXUS_DEMO_MODE=true` ou `NEXUS_ALLOW_MOCKS=true`.
 - Railway usa `/api/health` como healthcheck tecnico leve, sem dependencia de DB/render da home.
+- A área do aluno agora alterna entre sidebar completa no desktop e navegação inferior no mobile para evitar chat espremido em telas pequenas; o seletor demo de tenant não aparece no mobile.
 - Build validado com Next 16 via `next build --webpack`; Turbopack neste Windows falhou antes da compilacao por `Acesso negado` ao spawnar processo de PostCSS, nao por erro da aplicacao.
 
 > **Atualizar sempre que uma decisão arquitetural mudar** — nova abstração, nova camada, novo provider, refator estrutural. Não duplicar o ROADMAP; aqui é o **estado real do código**, não o plano.
@@ -175,6 +176,7 @@ Convenção pra nova capability: 1) adicionar rota em `routes.ts` (fallback hard
 
 ### Chat multimodal do aluno
 - O contrato client → `/api/chat` agora envia `messages[]` com `attachments[]` estruturados (`image`, `audio`, `document`). O componente `ChatClient` só faz upload para `/api/upload`; análise acontece no servidor.
+- A UI do `ChatClient` funciona como uma mesa de estudo: header com status pedagógico, ações rápidas, composer multilinha, feedback de upload/resposta e fontes RAG em bloco próprio, sem mudar o contrato da API.
 - `src/lib/chat/multimodal.ts` prepara a última mensagem do aluno antes do gateway:
   - Imagem: baixa do Railway Bucket/S3 privado (ou data URL mock), converte para data URL até 7MB e envia ao AI SDK como parte `image`.
   - Áudio: baixa do storage privado e chama `POST /v1/audio/transcriptions` da OpenAI, com `OPENAI_TRANSCRIPTION_MODEL` opcional e fallback para `whisper-1`.

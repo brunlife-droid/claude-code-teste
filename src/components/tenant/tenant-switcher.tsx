@@ -22,7 +22,7 @@ export function TenantSwitcher({ current }: { current: TenantId }) {
 
   return (
     <div
-      className="bg-surface border-border fixed right-4 bottom-4 z-50 flex flex-col gap-1.5 rounded-lg border p-2 shadow-[var(--shadow-lg)]"
+      className="bg-surface border-border fixed right-4 bottom-4 z-50 hidden flex-col gap-1.5 rounded-lg border p-2 shadow-[var(--shadow-lg)] md:flex"
       style={{ fontFamily: "var(--font-sans)" }}
     >
       <div

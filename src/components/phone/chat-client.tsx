@@ -1,11 +1,28 @@
 "use client";
 
-import { useState, useRef, useEffect, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import {
   ArrowUp,
+  BookOpenCheck,
+  Brain,
+  Camera,
+  CheckCircle2,
+  ClipboardList,
+  FileAudio,
   FileText,
   Image as ImageIcon,
+  Layers3,
+  Lightbulb,
+  Loader2,
   Mic,
   Paperclip,
   Sparkles,
@@ -55,6 +72,63 @@ interface ChatClientProps {
   initialConversationId?: string | null;
 }
 
+type QuickAction =
+  | {
+      kind: "prompt";
+      label: string;
+      helper: string;
+      prompt: string;
+      icon: LucideIcon;
+      tone: string;
+    }
+  | {
+      kind: "upload";
+      label: string;
+      helper: string;
+      icon: LucideIcon;
+      tone: string;
+    }
+  | {
+      kind: "study";
+      label: string;
+      helper: string;
+      icon: LucideIcon;
+      tone: string;
+    };
+
+const QUICK_ACTIONS: QuickAction[] = [
+  {
+    kind: "prompt",
+    label: "Me guia passo a passo",
+    helper: "A tutora pergunta antes de entregar a resposta.",
+    prompt: "Me guia passo a passo, sem entregar a resposta pronta.",
+    icon: Lightbulb,
+    tone: "border-warning/25 bg-warning-soft text-warning-fg",
+  },
+  {
+    kind: "upload",
+    label: "Enviar foto da questão",
+    helper: "Use imagem, áudio, PDF ou texto da tarefa.",
+    icon: Camera,
+    tone: "border-accent-sky/25 bg-accent-sky-soft text-accent-sky",
+  },
+  {
+    kind: "prompt",
+    label: "Treinar com exemplo",
+    helper: "Receba um exemplo parecido e tente resolver.",
+    prompt: "Me dá um exemplo parecido para eu tentar resolver.",
+    icon: ClipboardList,
+    tone: "border-accent-violet/25 bg-accent-violet-soft text-accent-violet",
+  },
+  {
+    kind: "study",
+    label: "Criar estudo ativo",
+    helper: "Transforme a conversa em cartões, quiz ou resumo.",
+    icon: Layers3,
+    tone: "border-success/25 bg-success-soft text-success-fg",
+  },
+];
+
 function formatTime(d: Date): string {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
@@ -87,8 +161,23 @@ function attachmentKindFor(file: File): ChatFileAttachment["kind"] {
 
 function uploadPromptFor(kind: ChatFileAttachment["kind"]): string {
   if (kind === "image") return "Analise esta imagem e me ajude a estudar.";
-  if (kind === "audio") return "Transcreva este audio e me ajude a estudar.";
+  if (kind === "audio") return "Transcreva este áudio e me ajude a estudar.";
   return "Analise este documento e me ajude a estudar.";
+}
+
+function formatBytes(size?: number): string | null {
+  if (!size || size < 0) return null;
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function latestSourcesCount(messages: ChatClientMessage[]): number {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const sources = messages[index]?.sources;
+    if (sources && sources.length > 0) return sources.length;
+  }
+  return 0;
 }
 
 export function ChatClient({
@@ -106,12 +195,45 @@ export function ChatClient({
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const tutorInitial = tenant.tutorName[0];
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const tutorInitial = tenant.tutorName[0] ?? "N";
+  const studyHref = conversationId
+    ? `/aluno/estudo?conversationId=${conversationId}`
+    : "/aluno/estudo";
+  const sourceCount = useMemo(() => latestSourcesCount(messages), [messages]);
+  const attachmentCount = useMemo(
+    () =>
+      messages.reduce(
+        (sum, message) => sum + (message.attachments?.length ?? 0),
+        0,
+      ),
+    [messages],
+  );
+  const activity = uploading
+    ? {
+        label: "Recebendo arquivo",
+        detail: "Assim que terminar, a tutora analisa o material.",
+        icon: Loader2,
+        live: true,
+      }
+    : sending
+      ? {
+          label: "Montando próximo passo",
+          detail: "A resposta vem como orientação, exemplo ou pergunta.",
+          icon: Brain,
+          live: true,
+        }
+      : {
+          label: conversationId ? "Conversa salva" : "Pronta para estudar",
+          detail: "Texto, foto, áudio e documento entram no mesmo fluxo.",
+          icon: CheckCircle2,
+          live: false,
+        };
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    e.target.value = ""; // reseta para permitir reupload do mesmo arquivo
+    e.target.value = "";
 
     setUploading(true);
     const now = formatTime(new Date());
@@ -247,7 +369,7 @@ export function ChatClient({
               });
             }
           } catch {
-            // skip malformed
+            // skip malformed chunks
           }
         }
       }
@@ -271,17 +393,22 @@ export function ChatClient({
     }
   }
 
-  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  async function handleSend(e: FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+  }, [input]);
+
+  async function submitText() {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text || sending || uploading) return;
 
     const now = formatTime(new Date());
     const userMsg: ChatClientMessage = { role: "user", content: text, hora: now };
@@ -297,44 +424,42 @@ export function ChatClient({
     await streamReply(next);
   }
 
+  async function handleSend(e: FormEvent) {
+    e.preventDefault();
+    await submitText();
+  }
+
+  function handleComposerKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== "Enter" || e.shiftKey) return;
+    e.preventDefault();
+    void submitText();
+  }
+
   function applySuggestion(text: string) {
     setInput(text);
+    requestAnimationFrame(() => textareaRef.current?.focus());
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <header className="bg-surface-raised/95 border-border/80 flex h-14 shrink-0 items-center gap-3 border-b px-6 shadow-[var(--shadow-xs)]">
-        <div
-          className="relative flex size-8 items-center justify-center rounded-lg text-sm font-semibold shadow-[var(--shadow-xs)]"
-          style={{
-            background: tenant.primarySoft,
-            color: tenant.primary,
-            fontFamily: "var(--font-serif)",
-          }}
-        >
-          {tutorInitial}
-          <div className="bg-success border-surface absolute -right-px -bottom-px size-2.5 rounded-full border-2" />
-        </div>
-        <div className="leading-tight">
-          <div className="text-[14px] font-semibold">{tenant.tutorName}</div>
-          <div className="text-text-faint text-[11.5px]">
-            tutora · {tenant.short.toLowerCase()}
-          </div>
-        </div>
-        <div className="flex-1" />
-        <div
-          className="text-text-faint hidden items-center gap-1.5 text-[11.5px] sm:flex"
-          style={{ fontFamily: "var(--font-mono)" }}
-        >
-          <Tag size={11} />
-          EF07MA04 · Frações equivalentes
-        </div>
-      </header>
+    <div className="flex h-full min-h-0 flex-col">
+      <ChatHeader
+        tenant={tenant}
+        tutorInitial={tutorInitial}
+        activity={activity}
+        sourceCount={sourceCount}
+        attachmentCount={attachmentCount}
+      />
 
-      {/* Mensagens */}
       <div ref={scrollRef} className="scroll-thin flex-1 overflow-y-auto">
-        <div className="mx-auto flex max-w-[760px] flex-col gap-6 px-6 py-8">
+        <div className="mx-auto flex max-w-[880px] flex-col gap-5 px-4 py-5 sm:px-6 sm:py-7">
+          <StudyKickoffPanel
+            tenant={tenant}
+            disabled={sending || uploading}
+            studyHref={studyHref}
+            onAttach={() => fileInputRef.current?.click()}
+            onPick={applySuggestion}
+          />
+
           <div className="text-text-faint flex items-center justify-center gap-2 text-[11.5px]">
             <span className="bg-border h-px flex-1" />
             <span>Hoje</span>
@@ -352,50 +477,18 @@ export function ChatClient({
           ))}
 
           {!sending && (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => applySuggestion("Pode explicar de outro jeito?")}
-                className="hover:bg-surface-3 cursor-pointer"
-              >
-                <Chip className="hover:bg-surface-3">
-                  <Sparkles size={11} style={{ color: tenant.primary }} />
-                  Explicar de outro jeito
-                </Chip>
-              </button>
-              <button
-                type="button"
-                onClick={() => applySuggestion("Me dá um exemplo prático.")}
-              >
-                <Chip className="hover:bg-surface-3">Me dá um exemplo</Chip>
-              </button>
-              <button type="button" onClick={() => applySuggestion("Ler em áudio.")}>
-                <Chip className="hover:bg-surface-3">
-                  <Volume2 size={11} />
-                  Ouvir em áudio
-                </Chip>
-              </button>
-              <Link
-                href={
-                  conversationId
-                    ? `/aluno/estudo?conversationId=${conversationId}`
-                    : "/aluno/estudo"
-                }
-              >
-                <Chip className="hover:bg-surface-3">
-                  <FileText size={11} />
-                  Criar estudo
-                </Chip>
-              </Link>
-            </div>
+            <FollowUpActions
+              studyHref={studyHref}
+              primary={tenant.primary}
+              onPick={applySuggestion}
+            />
           )}
         </div>
       </div>
 
-      {/* Input */}
       <form
         onSubmit={handleSend}
-        className="bg-surface-raised/95 border-border/80 border-t px-6 py-4 shadow-[0_-8px_24px_rgba(16,24,40,0.04)]"
+        className="border-border/80 bg-surface-raised/95 shrink-0 border-t px-4 py-3 shadow-[0_-10px_28px_rgba(16,24,40,0.06)] sm:px-6 sm:py-4"
       >
         <input
           ref={fileInputRef}
@@ -404,50 +497,56 @@ export function ChatClient({
           className="hidden"
           onChange={handleFileChange}
         />
-        <div className="mx-auto max-w-[760px]">
-          <div className="bg-surface-raised border-border-strong focus-within:border-primary focus-within:shadow-[0_0_0_4px_var(--primary-soft)] flex items-end gap-2 rounded-xl border p-3 shadow-[var(--shadow-sm)] transition-all">
-            <button
-              type="button"
-              aria-label="Anexar"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading || sending}
-              className="text-text-muted hover:bg-primary-soft hover:text-primary shrink-0 rounded-md p-2 transition-colors disabled:opacity-40"
+        <div className="mx-auto max-w-[880px]">
+          {(uploading || sending) && (
+            <div
+              aria-live="polite"
+              className="border-primary-border bg-primary-soft text-text-muted mb-2 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs"
             >
-              <Paperclip size={18} />
-            </button>
-            <button
-              type="button"
-              aria-label="Tirar foto"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading || sending}
-              className="text-text-muted hover:bg-primary-soft hover:text-primary shrink-0 rounded-md p-2 transition-colors disabled:opacity-40"
-            >
-              <ImageIcon size={18} />
-            </button>
+              <Loader2
+                size={14}
+                className="text-primary motion-safe:animate-spin"
+              />
+              <span>{activity.label}</span>
+            </div>
+          )}
 
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={sending}
-              placeholder="Pergunte sobre matéria, mande foto ou áudio…"
-              className="placeholder:text-text-faint flex-1 bg-transparent px-2 py-2 text-[14.5px] outline-none"
+          <div className="border-border-strong bg-surface-raised focus-within:border-primary focus-within:shadow-[0_0_0_4px_var(--primary-soft)] flex items-end gap-1.5 rounded-lg border p-2 shadow-[var(--shadow-sm)] transition-all sm:gap-2 sm:p-3">
+            <ComposerIconButton
+              label="Anexar arquivo"
+              icon={Paperclip}
+              disabled={uploading || sending}
+              onClick={() => fileInputRef.current?.click()}
+            />
+            <ComposerIconButton
+              label="Enviar foto"
+              icon={ImageIcon}
+              disabled={uploading || sending}
+              onClick={() => fileInputRef.current?.click()}
             />
 
-            <button
-              type="button"
-              aria-label="Enviar áudio"
-              onClick={() => fileInputRef.current?.click()}
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleComposerKeyDown}
+              disabled={sending || uploading}
+              placeholder="Pergunte, cole sua dúvida ou descreva o arquivo..."
+              className="placeholder:text-text-faint max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-[15px] leading-relaxed outline-none"
+            />
+
+            <ComposerIconButton
+              label="Enviar áudio"
+              icon={Mic}
               disabled={uploading || sending}
-              className="text-text-muted hover:bg-primary-soft hover:text-primary shrink-0 rounded-md p-2 transition-colors"
-            >
-              <Mic size={18} />
-            </button>
+              onClick={() => fileInputRef.current?.click()}
+            />
             <button
               type="submit"
-              aria-label="Enviar"
-              disabled={!input.trim() || sending}
-              className="shrink-0 rounded-md p-2 shadow-[var(--shadow-xs)] transition-all hover:-translate-y-px disabled:opacity-40"
+              aria-label="Enviar mensagem"
+              disabled={!input.trim() || sending || uploading}
+              className="grid size-10 shrink-0 place-items-center rounded-md shadow-[var(--shadow-xs)] transition-all hover:-translate-y-px disabled:translate-y-0 disabled:opacity-40"
               style={{
                 background: tenant.primary,
                 color: tenant.primaryFg,
@@ -456,13 +555,277 @@ export function ChatClient({
               <ArrowUp size={18} />
             </button>
           </div>
-          <div className="text-text-faint mt-2 text-center text-[11px]">
-            {tenant.tutorName} ensina pelo método socrático — guia o raciocínio
-            sem entregar respostas prontas.
+          <div className="text-text-faint mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-[11px]">
+            <span>{tenant.tutorName} guia o raciocínio sem entregar tudo pronto.</span>
+            <span className="hidden sm:inline">Enter envia, Shift+Enter quebra linha.</span>
           </div>
         </div>
       </form>
     </div>
+  );
+}
+
+function ChatHeader({
+  tenant,
+  tutorInitial,
+  activity,
+  sourceCount,
+  attachmentCount,
+}: {
+  tenant: ChatClientProps["tenant"];
+  tutorInitial: string;
+  activity: {
+    label: string;
+    detail: string;
+    icon: LucideIcon;
+    live: boolean;
+  };
+  sourceCount: number;
+  attachmentCount: number;
+}) {
+  const ActivityIcon = activity.icon;
+  return (
+    <header className="border-border/80 bg-surface-raised/95 shrink-0 border-b px-4 py-3 shadow-[var(--shadow-xs)] sm:px-6">
+      <div className="mx-auto flex max-w-[980px] flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 items-center gap-3">
+          <div
+            className="relative grid size-11 shrink-0 place-items-center rounded-lg text-base font-semibold shadow-[var(--shadow-sm)]"
+            style={{
+              background: tenant.primarySoft,
+              color: tenant.primary,
+              fontFamily: "var(--font-serif)",
+            }}
+          >
+            {tutorInitial}
+            <div className="border-surface bg-success absolute -right-px -bottom-px size-3 rounded-full border-2" />
+          </div>
+          <div className="min-w-0 leading-tight">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-[15px] font-semibold sm:text-base">
+                {tenant.tutorName}
+              </h1>
+              <span className="border-success/25 bg-success-soft text-success-fg inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium">
+                online
+              </span>
+            </div>
+            <div className="text-text-muted mt-1 flex flex-wrap items-center gap-2 text-[12px]">
+              <span>{tenant.short}</span>
+              <span className="text-text-faint">•</span>
+              <span>tutoria socrática</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid flex-1 gap-2 sm:grid-cols-3">
+          <StatusPill
+            icon={ActivityIcon}
+            label={activity.label}
+            detail={activity.detail}
+            color={tenant.primary}
+            live={activity.live}
+          />
+          <StatusPill
+            icon={Tag}
+            label="Foco atual"
+            detail="EF07MA04 · Frações"
+            color="var(--accent-violet)"
+          />
+          <StatusPill
+            icon={BookOpenCheck}
+            label="Material usado"
+            detail={
+              sourceCount > 0
+                ? `${sourceCount} fonte${sourceCount > 1 ? "s" : ""} da turma`
+                : attachmentCount > 0
+                  ? `${attachmentCount} anexo${attachmentCount > 1 ? "s" : ""}`
+                  : "pronto para anexos"
+            }
+            color="var(--success)"
+          />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function StatusPill({
+  icon: Icon,
+  label,
+  detail,
+  color,
+  live = false,
+}: {
+  icon: LucideIcon;
+  label: string;
+  detail: string;
+  color: string;
+  live?: boolean;
+}) {
+  return (
+    <div className="border-border bg-surface/80 flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 shadow-[var(--shadow-xs)]">
+      <span
+        className="grid size-8 shrink-0 place-items-center rounded-md"
+        style={{
+          background: `color-mix(in srgb, ${color} 12%, #ffffff)`,
+          color,
+        }}
+      >
+        <Icon size={15} className={live ? "motion-safe:animate-pulse" : ""} />
+      </span>
+      <span className="min-w-0 leading-tight">
+        <span className="block truncate text-[12px] font-semibold">{label}</span>
+        <span className="text-text-faint block truncate text-[11px]">
+          {detail}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function StudyKickoffPanel({
+  tenant,
+  disabled,
+  studyHref,
+  onAttach,
+  onPick,
+}: {
+  tenant: ChatClientProps["tenant"];
+  disabled: boolean;
+  studyHref: string;
+  onAttach: () => void;
+  onPick: (text: string) => void;
+}) {
+  return (
+    <section className="soft-band rounded-lg p-3 shadow-[var(--shadow-sm)] sm:p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Sparkles size={16} style={{ color: tenant.primary }} />
+            Escolha um começo para estudar melhor
+          </div>
+          <p className="text-text-muted mt-1 text-[13px] leading-relaxed">
+            A conversa pode virar explicação guiada, análise de material ou estudo
+            ativo.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {QUICK_ACTIONS.map((action) => {
+            const Icon = action.icon;
+            if (action.kind === "study") {
+              return (
+                <Link
+                  key={action.label}
+                  href={studyHref}
+                  className={`lift-on-hover flex min-h-[76px] items-start gap-2 rounded-lg border p-3 text-left ${action.tone}`}
+                >
+                  <Icon size={17} className="mt-0.5 shrink-0" />
+                  <span className="min-w-0">
+                    <span className="block text-[12.5px] font-semibold">
+                      {action.label}
+                    </span>
+                    <span className="mt-1 block text-[11px] leading-snug opacity-80">
+                      {action.helper}
+                    </span>
+                  </span>
+                </Link>
+              );
+            }
+            return (
+              <button
+                key={action.label}
+                type="button"
+                disabled={disabled}
+                onClick={() =>
+                  action.kind === "upload" ? onAttach() : onPick(action.prompt)
+                }
+                className={`lift-on-hover flex min-h-[76px] items-start gap-2 rounded-lg border p-3 text-left disabled:opacity-50 ${action.tone}`}
+              >
+                <Icon size={17} className="mt-0.5 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-[12.5px] font-semibold">
+                    {action.label}
+                  </span>
+                  <span className="mt-1 block text-[11px] leading-snug opacity-80">
+                    {action.helper}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FollowUpActions({
+  studyHref,
+  primary,
+  onPick,
+}: {
+  studyHref: string;
+  primary: string;
+  onPick: (text: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={() => onPick("Pode explicar de outro jeito?")}
+        className="cursor-pointer"
+      >
+        <Chip className="hover:bg-surface-3">
+          <Sparkles size={11} style={{ color: primary }} />
+          Explicar de outro jeito
+        </Chip>
+      </button>
+      <button
+        type="button"
+        onClick={() => onPick("Me dá um exemplo prático.")}
+      >
+        <Chip className="hover:bg-surface-3">
+          <Lightbulb size={11} />
+          Me dá um exemplo
+        </Chip>
+      </button>
+      <button type="button" onClick={() => onPick("Ler em áudio.")}>
+        <Chip className="hover:bg-surface-3">
+          <Volume2 size={11} />
+          Ouvir em áudio
+        </Chip>
+      </button>
+      <Link href={studyHref}>
+        <Chip className="hover:bg-surface-3">
+          <FileText size={11} />
+          Criar estudo
+        </Chip>
+      </Link>
+    </div>
+  );
+}
+
+function ComposerIconButton({
+  label,
+  icon: Icon,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  icon: LucideIcon;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      className="text-text-muted hover:bg-primary-soft hover:text-primary grid size-10 shrink-0 place-items-center rounded-md transition-colors disabled:opacity-40"
+    >
+      <Icon size={18} />
+    </button>
   );
 }
 
@@ -479,7 +842,7 @@ function MessageBubble({
 }) {
   if (message.role === "user") {
     return (
-      <div className="flex flex-col items-end gap-1.5">
+      <div className="flex flex-col items-end gap-2">
         {message.attachments?.map((attachment, index) => (
           <AttachmentPreview
             key={`${attachment.url}-${index}`}
@@ -487,17 +850,23 @@ function MessageBubble({
           />
         ))}
         {message.content && (
-          <div className="bg-primary-soft text-text border-primary-border max-w-[80%] rounded-xl rounded-tr-md border px-4 py-3 text-[15px] leading-relaxed shadow-[var(--shadow-xs)]">
+          <div className="border-primary-border bg-primary-soft text-text max-w-[86%] rounded-lg rounded-tr-sm border px-4 py-3 text-[15px] leading-relaxed shadow-[var(--shadow-xs)] sm:max-w-[74%]">
             {message.content}
+            {message.hora && (
+              <div className="text-text-faint mt-1.5 text-right text-[11px]">
+                {message.hora}
+              </div>
+            )}
           </div>
         )}
       </div>
     );
   }
+
   return (
-    <div className="flex gap-3">
+    <article className="flex gap-2.5 sm:gap-3">
       <div
-        className="flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold shadow-[var(--shadow-xs)]"
+        className="grid size-9 shrink-0 place-items-center rounded-lg text-sm font-semibold shadow-[var(--shadow-xs)]"
         style={{
           background: tutorSoft,
           color: tutorPrimary,
@@ -507,19 +876,25 @@ function MessageBubble({
         {tutorInitial}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[15px] leading-relaxed">
-          {message.content && (
-            <LlmMarkdown content={message.content} variant="chat" />
-          )}
-          {message.streaming && (
-            <span
-              className="ml-1 inline-block h-4 w-0.5 align-middle"
-              style={{
-                background: tutorPrimary,
-                animation: "blink 1s infinite",
-              }}
-            />
-          )}
+        <div className="border-border bg-surface-raised relative rounded-lg rounded-tl-sm border px-4 py-3 text-[15px] leading-relaxed shadow-[var(--shadow-sm)]">
+          <div
+            className="absolute top-3 bottom-3 left-0 w-1 rounded-r-full"
+            style={{ background: tutorPrimary }}
+          />
+          <div className="pl-2">
+            {message.content && (
+              <LlmMarkdown content={message.content} variant="chat" />
+            )}
+            {message.streaming && !message.content && (
+              <ThinkingIndicator color={tutorPrimary} />
+            )}
+            {message.streaming && message.content && (
+              <span
+                className="ml-1 inline-block h-4 w-0.5 align-middle motion-safe:animate-pulse"
+                style={{ background: tutorPrimary }}
+              />
+            )}
+          </div>
         </div>
         {message.hora && !message.streaming && (
           <div className="text-text-faint mt-1.5 text-[11px]">{message.hora}</div>
@@ -528,7 +903,26 @@ function MessageBubble({
           <SourceList sources={message.sources} />
         )}
       </div>
-      <style>{`@keyframes blink { 50% { opacity: 0 } }`}</style>
+    </article>
+  );
+}
+
+function ThinkingIndicator({ color }: { color: string }) {
+  return (
+    <div className="flex items-center gap-2 text-sm text-text-muted">
+      <span className="flex items-center gap-1" aria-hidden="true">
+        {[0, 1, 2].map((item) => (
+          <span
+            key={item}
+            className="size-1.5 rounded-full motion-safe:animate-pulse"
+            style={{
+              background: color,
+              animationDelay: `${item * 120}ms`,
+            }}
+          />
+        ))}
+      </span>
+      <span>Preparando uma pergunta melhor...</span>
     </div>
   );
 }
@@ -538,23 +932,31 @@ function AttachmentPreview({
 }: {
   attachment: ChatFileAttachment;
 }) {
+  const size = formatBytes(attachment.size);
   if (attachment.kind === "image") {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={attachment.url}
-        alt={attachment.name ?? "Imagem enviada"}
-        className="border-primary-border max-h-[300px] max-w-[60%] rounded-xl rounded-tr-md border object-cover shadow-[var(--shadow-md)]"
-      />
+      <figure className="max-w-[72%] sm:max-w-[58%]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={attachment.url}
+          alt={attachment.name ?? "Imagem enviada"}
+          className="border-primary-border max-h-[320px] w-full rounded-lg rounded-tr-sm border object-cover shadow-[var(--shadow-md)]"
+        />
+        <figcaption className="text-text-faint mt-1 truncate text-right text-[11px]">
+          {attachment.name ?? "Imagem enviada"}
+          {size ? ` · ${size}` : ""}
+        </figcaption>
+      </figure>
     );
   }
 
   if (attachment.kind === "audio") {
     return (
-      <div className="border-primary-border bg-primary-soft w-full max-w-[360px] rounded-xl rounded-tr-md border p-3 shadow-[var(--shadow-sm)]">
+      <div className="border-primary-border bg-primary-soft w-full max-w-[390px] rounded-lg rounded-tr-sm border p-3 shadow-[var(--shadow-sm)]">
         <div className="text-text-muted mb-2 flex items-center gap-2 text-xs">
-          <Mic size={13} />
+          <FileAudio size={14} />
           <span className="truncate">{attachment.name ?? "Áudio enviado"}</span>
+          {size && <span className="text-text-faint shrink-0">{size}</span>}
         </div>
         <audio controls src={attachment.url} className="w-full" />
       </div>
@@ -562,10 +964,13 @@ function AttachmentPreview({
   }
 
   return (
-    <div className="border-primary-border bg-primary-soft text-text-muted flex max-w-[360px] items-center gap-2 rounded-xl rounded-tr-md border px-4 py-3 text-sm shadow-[var(--shadow-sm)]">
-      <FileText size={16} className="shrink-0" />
-      <span className="min-w-0 truncate">
-        {attachment.name ?? "Documento enviado"}
+    <div className="border-primary-border bg-primary-soft text-text-muted flex max-w-[390px] items-center gap-3 rounded-lg rounded-tr-sm border px-4 py-3 text-sm shadow-[var(--shadow-sm)]">
+      <FileText size={17} className="shrink-0" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-text">
+          {attachment.name ?? "Documento enviado"}
+        </span>
+        {size && <span className="text-text-faint text-[11px]">{size}</span>}
       </span>
     </div>
   );
@@ -573,20 +978,26 @@ function AttachmentPreview({
 
 function SourceList({ sources }: { sources: MessageSource[] }) {
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      {sources.slice(0, 3).map((source) => (
-        <div
-          key={`${source.documentId}-${source.chunkIndex}`}
-          className="border-border bg-surface-2 text-text-muted flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-[11.5px]"
-          title={`${source.documentName} - trecho ${source.chunkIndex + 1}`}
-        >
-          <FileText size={12} className="shrink-0" />
-          <span className="truncate">Fonte: {source.documentName}</span>
-          <span className="text-text-faint shrink-0">
-            trecho {source.chunkIndex + 1}
-          </span>
-        </div>
-      ))}
+    <div className="border-info/20 bg-info-soft mt-3 rounded-lg border p-3">
+      <div className="text-text flex items-center gap-2 text-xs font-semibold">
+        <BookOpenCheck size={14} />
+        Material da turma usado
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {sources.slice(0, 3).map((source) => (
+          <div
+            key={`${source.documentId}-${source.chunkIndex}`}
+            className="border-border bg-surface-raised text-text-muted flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-[11.5px]"
+            title={`${source.documentName} - trecho ${source.chunkIndex + 1}`}
+          >
+            <FileText size={12} className="shrink-0" />
+            <span className="truncate">{source.documentName}</span>
+            <span className="text-text-faint shrink-0">
+              trecho {source.chunkIndex + 1}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
